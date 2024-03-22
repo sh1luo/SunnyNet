@@ -96,7 +96,7 @@ func SocketClientSetBufferSize(Context, BufferSize int) bool {
 		defer k.l.Unlock()
 		k.BufferSize = BufferSize
 		if k.BufferSize < 1 {
-			k.BufferSize = 4096
+			k.BufferSize = 40960
 		}
 		return true
 	}
@@ -116,7 +116,7 @@ func SocketClientDial(Context int, addr string, call int, isTls, synchronous boo
 	w.err = nil
 	w.call = call
 	if w.BufferSize < 1 {
-		w.BufferSize = 4096
+		w.BufferSize = 40960
 	}
 	uAddr := SunnyNet.TargetInfo{}
 	uAddr.Parse(addr, 0)

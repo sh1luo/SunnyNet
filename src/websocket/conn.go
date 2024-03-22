@@ -34,8 +34,8 @@ const (
 
 	writeWait = time.Second
 
-	defaultReadBufferSize  = 4096
-	defaultWriteBufferSize = 4096
+	defaultReadBufferSize  = 40960
+	defaultWriteBufferSize = 40960
 
 	continuationFrame = 0
 	noFrame           = -1

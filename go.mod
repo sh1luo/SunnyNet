@@ -1,4 +1,4 @@
-module github.com/qtgolang/SunnyNet
+module github.com/sh1luo/SunnyNet
 
 go 1.18
 

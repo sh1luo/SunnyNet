@@ -1574,7 +1574,7 @@ func (s *ProxyRequest) sendHttp(req *http.Request) {
 }
 func (s *ProxyRequest) ReadAll(r io.Reader) ([]byte, error) {
 	var bufBuffer bytes.Buffer
-	b := make([]byte, 4096)
+	b := make([]byte, 40960)
 	defer func() {
 		b = make([]byte, 0)
 		bufBuffer.Reset()
@@ -1600,7 +1600,7 @@ MsgType ==2 dst=客户端 src=服务器端
 */
 func (s *ProxyRequest) SocketForward(dst bufio.Writer, src *public.ReadWriteObject, MsgType int, t1, t2 net.Conn, TCP *public.TCP, isHttpReq *bool) {
 	as := &public.TcpMsg{}
-	buf := make([]byte, 4096)
+	buf := make([]byte, 40960)
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println("SocketForward 出了错：", err)
