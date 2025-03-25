@@ -538,14 +538,10 @@ func (d *Dialer) ConnDialContext(request *http.Request, ProxyUrl *SunnyProxy.Pro
 		if ext[""] != "permessage-deflate" {
 			continue
 		}
-		_, snct := ext["server_no_context_takeover"]
-		_, cnct := ext["client_no_context_takeover"]
-		if snct || cnct {
-			conn.newCompressionWriter = compressNoContextTakeover
-			conn.newDecompressionReader = decompressNoContextTakeover2
-			conn.window = true
-			conn.window_bytes.Reset()
-		}
+		conn.newCompressionWriter = compressNoContextTakeover
+		conn.newDecompressionReader = decompressNoContextTakeover2
+		conn.window = true
+		conn.window_bytes.Reset()
 		break
 	}
 

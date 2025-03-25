@@ -962,6 +962,20 @@ window.builtCmdWords =  [
         ]
     },
     {
+        name: ['GetFileSize',  "读取文件大小", "取文件大小"],
+        zName: [["dqwjdx","读取文件大小"],["qwjdx","取文件大小"]],
+        insertText: 'GetFileSize(${1:filePath}$0)',
+        detail: "取文件大小",
+        contents: [
+            {value: '**取文件大小**'},
+            {value: '**参数说明**'},
+            {value: '参数1:filePath     字符串类型  [要读取本地文件的全路径]'},
+            {value: '返回值:int64 (返回[-1]:表示读取失败)'},
+            {value: '**示例代码**'},
+            {value: '```go\n\tSize := GetFileSize("c:\\1.txt")\n\tLog("文件大小:",Size)\n```'},
+        ]
+    },
+    {
         name: ['OpenFile', '打开文件', "openFile"],
         zName: [["dkwj","打开文件"]],
         insertText: 'OpenFile(${1:filePath}$0)',

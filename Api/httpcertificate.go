@@ -17,15 +17,15 @@ func AddHttpCertificate(host string, CertManagerId int, Rules uint8) bool {
 	ca := w.ExportCA()
 	key := w.ExportKEY()
 	cart := w.Cert
-	var RootCAs *x509.CertPool
+	var ClientCAs *x509.CertPool
 	if w.Tls != nil {
 		if w.Tls.ClientCAs != nil {
-			RootCAs = w.Tls.ClientCAs
+			ClientCAs = w.Tls.ClientCAs
 		}
 	}
-	if (ca == "" || key == "") && cart == "" && RootCAs != nil {
+	if (ca == "" || key == "") && cart == "" && ClientCAs != nil {
 		c := &HttpCertificate.CertificateRequestManager{Rules: Rules}
-		c.AddRootCAs(RootCAs)
+		c.AddClientCAs(ClientCAs)
 		HttpCertificate.Map[HttpCertificate.ParsingHost(host)] = c
 		return true
 	}
@@ -34,7 +34,7 @@ func AddHttpCertificate(host string, CertManagerId int, Rules uint8) bool {
 	}
 	c := &HttpCertificate.CertificateRequestManager{Rules: Rules}
 	if c.Load(ca, key) {
-		c.AddRootCAs(RootCAs)
+		c.AddClientCAs(ClientCAs)
 		HttpCertificate.Map[HttpCertificate.ParsingHost(host)] = c
 		return true
 	}

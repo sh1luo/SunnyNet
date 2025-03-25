@@ -202,6 +202,7 @@ func heartbeat(Context int) {
 		return
 	}
 	w.gw.Add(1)
+	defer w.gw.Done()
 	for {
 		w.l.Lock()
 		if w.out {
@@ -221,7 +222,6 @@ func heartbeat(Context int) {
 			Call.Call(w.heartbeatCall, Context)
 		}
 	}
-	w.gw.Done()
 }
 
 // WebsocketClose
@@ -288,6 +288,13 @@ func WebsocketReadWrite(Context int, data []byte, messageType int) bool {
 }
 func (w *WebsocketClient) WebsocketRead() {
 	for {
+		w.l.Lock()
+		if w.out {
+			w.l.Unlock()
+			_ = w.wb.Close()
+			break
+		}
+		w.l.Unlock()
 		if w.wb == nil {
 			WebsocketSendCall([]byte("Pointer = null"), w.call, w.goCall, 2, w.Context, 255)
 			return

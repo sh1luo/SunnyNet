@@ -148,7 +148,7 @@ func (h *httpConn) PID() int {
 }
 
 func (h *httpConn) Theology() int {
-	return h._Context
+	return h._Theology
 }
 
 func (h *httpConn) Type() int {

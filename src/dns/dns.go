@@ -1,9 +1,15 @@
 package dns
 
 import (
+	"bufio"
 	"context"
+	"errors"
+	"fmt"
 	"github.com/qtgolang/SunnyNet/src/crypto/tls"
+	"math/rand"
 	"net"
+	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -154,6 +160,17 @@ func deepCopyIPs(src []net.IP) []net.IP {
 }
 func LookupIP(host string, proxy string, Dial func(network, address string) (net.Conn, error)) ([]net.IP, error) {
 	dnsLock.Lock()
+	localDns, _ := GetLocalEntry(host)
+	if localDns != nil {
+		dnsLock.Unlock()
+		if len(localDns) == 0 {
+			return nil, NoLocalDnsEntry
+		}
+		rand.Seed(time.Now().UnixNano())
+		randomIndex := rand.Intn(len(localDns))
+		SetFirstIP(host, proxy, localDns[randomIndex])
+		return localDns, nil
+	}
 	if dnsServer == dnsServerLocal {
 		dnsLock.Unlock()
 		return localLookupIP(host, proxy)
@@ -227,4 +244,83 @@ func localLookupIP(host, proxyHost string) ([]net.IP, error) {
 		dnsLock.Unlock()
 	}
 	return _ips_, _err
+}
+
+// hostEntry 表示一个 hosts 文件中的条目
+type hostEntry struct {
+	IP        string   // IP 地址
+	Hostnames []string // 域名列表
+	RawLine   string   // 原始行内容（如果是注释或空行）
+}
+
+// ReadAndParseHosts 读取并解析 hosts 文件
+func readAndParseHosts() ([]hostEntry, error) {
+	filePath := getHostsFilePath()
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("无法打开文件: %v", err)
+	}
+	defer file.Close()
+
+	var entries []hostEntry
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// 忽略空行或注释
+		if line == "" || strings.HasPrefix(line, "#") {
+			entries = append(entries, hostEntry{RawLine: line})
+			continue
+		}
+
+		// 拆分 IP 与域名
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			entries = append(entries, hostEntry{RawLine: line})
+			continue
+		}
+
+		ip := fields[0]
+		hostnames := fields[1:]
+
+		entry := hostEntry{
+			IP:        ip,
+			Hostnames: hostnames,
+			RawLine:   line,
+		}
+		entries = append(entries, entry)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("读取文件出错: %v", err)
+	}
+	return entries, nil
+}
+
+// getHostsFilePath 返回操作系统对应的 hosts 文件路径
+func getHostsFilePath() string {
+	if runtime.GOOS == "windows" {
+		return `C:\Windows\System32\drivers\etc\hosts`
+	}
+	return `/etc/hosts`
+}
+
+var localDnsHostEntry, _ = readAndParseHosts()
+var NoLocalDnsEntry = errors.New("No Local Dns Entry ")
+
+func GetLocalEntry(host string) ([]net.IP, error) {
+	// 打印读取到的所有条目
+	var ips []net.IP
+	for _, entry := range localDnsHostEntry {
+		for _, v := range entry.Hostnames {
+			if v == host && host != "" {
+				ips = append(ips, net.ParseIP(entry.IP))
+			}
+		}
+	}
+	if len(ips) > 0 {
+		return ips, nil
+	}
+	return nil, NoLocalDnsEntry
+
 }

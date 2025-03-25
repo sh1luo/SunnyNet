@@ -222,13 +222,16 @@ type direct struct {
 }
 
 func (ps direct) Dial(network, addr string) (net.Conn, error) {
-	var m net.Dialer
-	m.Timeout = ps.timeout
-	return m.Dial(network, addr)
+	return ps.DialContext(context.Background(), network, addr)
 }
 func (ps direct) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	var m net.Dialer
 	m.Timeout = ps.timeout
+	if m.Timeout < time.Millisecond {
+		m.Timeout = 5 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, m.Timeout)
+	defer cancel()
 	return m.DialContext(ctx, network, addr)
 }
 func FormatIP(ip net.IP, port string) string {

@@ -18,11 +18,11 @@ type CertificateRequestManager struct {
 	Config *tls.Config
 }
 
-func (w *CertificateRequestManager) AddRootCAs(RootCAs *x509.CertPool) {
+func (w *CertificateRequestManager) AddClientCAs(ClientCAs *x509.CertPool) {
 	if w.Config == nil {
-		w.Config = &tls.Config{RootCAs: RootCAs}
+		w.Config = &tls.Config{ClientCAs: ClientCAs}
 	} else {
-		w.Config.RootCAs = RootCAs
+		w.Config.ClientCAs = ClientCAs
 	}
 }
 func (w *CertificateRequestManager) Load(ca, key string) bool {

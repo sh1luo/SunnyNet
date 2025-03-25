@@ -46,22 +46,67 @@ import (
 	"github.com/qtgolang/SunnyNet/SunnyNet"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"time"
+	"log"
+	"fmt"
 )
-
-var Sunny = SunnyNet.NewSunny()
-
 func main() {
-	//绑定回调函数
-	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
+	var Sunny = SunnyNet.NewSunny()
+	/*
+		//载入自定义证书
+		cert := SunnyNet.NewCertManager()
+		ok := cert.LoadP12Certificate("C:\\Users\\Qin\\Desktop\\Cert\\ca6afc5aa40fcbd3.p12", "GXjc75IRAO0T")
+		fmt.Println("载入P12:", ok)
+		fmt.Println("证书名称：", cert.GetCommonName())
 
-	//绑定端口号并启动
-	Sunny.SetPort(2025).Start() 
-	
-	if Sunny.Error != nil {
-		panic(Sunny.Error)
+		//给指定域名使用这个证书
+		Sunny.AddHttpCertificate("api.vlightv.com", cert, SunnyNet.HTTPCertRules_Request)
+
+	*/
+
+	/*
+		log := func(Context int, info ...any) {
+			fmt.Println("x脚本日志", fmt.Sprintf("%v", info))
+		}
+		save := func(Context int, code []byte) {
+			//在这里将code 储存到文件，下次启动时，载入恢复
+		}
+		Sunny.SetScriptCall(log, save)
+		//载入上次保存的脚本代理
+		Sunny.SetScriptCode(string(GoScriptCode.DefaultCode))
+	*/
+
+	/*
+		//设置全局上游代理
+		Sunny.SetGlobalProxy("socket://192.168.31.1:4321", 60000)
+
+		//指定IP或域名不使用全局的上游代理
+		Sunny.CompileProxyRegexp("127.0.0.1;[::1];192.168.*;*.baidu.com")
+	*/
+
+	/*
+		//开启强制走TCP,开启后 https 将不会解密 直接转发数据流量
+		Sunny.MustTcp(true)
+	*/
+	/*
+		//禁止TCP，所有TCP流量将直接断开连接
+		Sunny.DisableTCP(true)
+	*/
+
+	/*
+		//设置强制走TCP规则，使用这个函数后 就不要使用 Sunny.MustTcp(true) 否则这个函数无效
+		Sunny.SetMustTcpRegexp("tpstelemetry.tencent.com", true)
+	*/
+	//设置回调地址
+	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
+	Port := 2025
+	Sunny.SetPort(Port).Start()
+	err := Sunny.Error
+	if err != nil {
+		panic(err)
 	}
-	//避免程序退出
-	time.Sleep(24 * time.Hour)
+	fmt.Println("Run Port=", Port)
+	//阻止程序退出
+	select {}
 }
 
 func HttpCallback(Conn SunnyNet.ConnHTTP) {

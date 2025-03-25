@@ -32,15 +32,15 @@ func (s *Sunny) AddHttpCertificate(host string, Cert *Certificate.CertManager, R
 	ca := Cert.ExportCA()
 	key := Cert.ExportKEY()
 	cart := Cert.Cert
-	var RootCAs *x509.CertPool
+	var ClientCAs *x509.CertPool
 	if Cert.Tls != nil {
 		if Cert.Tls.ClientCAs != nil {
-			RootCAs = Cert.Tls.ClientCAs
+			ClientCAs = Cert.Tls.ClientCAs
 		}
 	}
-	if (ca == "" || key == "") && cart == "" && RootCAs != nil {
+	if (ca == "" || key == "") && cart == "" && ClientCAs != nil {
 		c := &HttpCertificate.CertificateRequestManager{Rules: Rules}
-		c.AddRootCAs(RootCAs)
+		c.AddClientCAs(ClientCAs)
 		HttpCertificate.Map[HttpCertificate.ParsingHost(host)] = c
 		return true
 	}
@@ -49,7 +49,7 @@ func (s *Sunny) AddHttpCertificate(host string, Cert *Certificate.CertManager, R
 	}
 	c := &HttpCertificate.CertificateRequestManager{Rules: Rules}
 	if c.Load(ca, key) {
-		c.AddRootCAs(RootCAs)
+		c.AddClientCAs(ClientCAs)
 		HttpCertificate.Map[HttpCertificate.ParsingHost(host)] = c
 		return true
 	}

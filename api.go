@@ -581,8 +581,8 @@ SetTcpAgent 给当前TCP连接设置代理 仅限 TCP回调 即将连接时使�
 */
 //
 //export SetTcpAgent
-func SetTcpAgent(MessageId int, ProxyUrl *C.char) bool {
-	return Api.SetTcpAgent(MessageId, C.GoString(ProxyUrl))
+func SetTcpAgent(MessageId int, ProxyUrl *C.char, outTime int) bool {
+	return Api.SetTcpAgent(MessageId, C.GoString(ProxyUrl), outTime)
 }
 
 /*

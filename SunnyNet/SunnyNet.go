@@ -60,6 +60,18 @@ func (s *TargetInfo) Clone() *TargetInfo {
 		IPV6: s.IPV6,
 	}
 }
+func (s *TargetInfo) IsDomain() bool {
+	if s == nil {
+		return false
+	}
+	if s.IPV6 {
+		return false
+	}
+	if ip := net.ParseIP(s.Host); ip != nil && (ip.To4() != nil || ip.To16() != nil) {
+		return false
+	}
+	return true
+}
 
 // Remove 清除信息
 func (s *TargetInfo) Remove() {
@@ -442,9 +454,7 @@ func (s *proxyRequest) Socks5ProxyVerification() bool {
 	}
 	port := uint16(portNum1)<<8 + uint16(portNum2)
 	if isV6 {
-		hostname = fmt.Sprintf("[%s]:%d", hostname, port)
-	} else {
-		hostname = fmt.Sprintf("%s:%d", hostname, port)
+		hostname = fmt.Sprintf("[%s]", hostname)
 	}
 	_ = s.RwObj.WriteByte(public.Socks5Version)
 
@@ -500,30 +510,12 @@ func (s *proxyRequest) Socks5ProxyVerification() bool {
 	}
 	_ = s.RwObj.WriteByte(0)
 
-	if err == nil {
-		host := IpDns(hostname)
-		if host == "" {
-			host = hostname
-		}
-		u, _ := url.Parse(public.HttpsRequestPrefix + host)
-		host = u.Hostname()
-		if public.IsIPv4(host) {
-			_ = s.RwObj.WriteByte(public.Socks5typeIpv4)
-			_, _ = s.RwObj.Write(net.ParseIP(host).To4())
-		} else {
-			_ = s.RwObj.WriteByte(public.Socks5typeDomainName)
-			_ = s.RwObj.WriteByte(byte(len(hostname)))
-			_, _ = s.RwObj.WriteString(hostname)
-		}
-	} else {
-		_ = s.RwObj.WriteByte(public.Socks5typeDomainName)
-		_ = s.RwObj.WriteByte(byte(len(hostname)))
-		_, _ = s.RwObj.WriteString(hostname)
-	}
+	_ = s.RwObj.WriteByte(public.Socks5typeDomainName)
+	_ = s.RwObj.WriteByte(byte(len(hostname)))
+	_, _ = s.RwObj.WriteString(hostname)
 
 	_ = s.RwObj.WriteByte(portNum1)
 	_ = s.RwObj.WriteByte(portNum2)
-
 	_ = s.RwObj.Flush()
 	if err != nil {
 		return false
@@ -969,7 +961,9 @@ func (s *proxyRequest) doRequest() error {
 	var n net.Conn
 	var err error
 	var Close func()
-
+	if !s.Target.IsDomain() {
+		s.Request.SetContext("_serverIP_", s.Target.Host)
+	}
 	do, n, err, Close = httpClient.Do(s.Request, s.Proxy, false, s.TlsConfig, s.SendTimeout, s.getTLSValues, s.Conn)
 	s.Response.Conn = n
 	ip, _ := s.Request.Context().Value(public.SunnyNetServerIpTags).(string)
@@ -997,8 +991,16 @@ func (s *proxyRequest) https() {
 	if s.Target.Host == public.NULL || s.Target.Port < 1 {
 		return
 	}
-	//是否开启了强制走TCP
-	if s.Global.isMustTcp {
+	if s.Target.Port == 853 {
+		sx := dns.GetDnsServer()
+		if dns.GetDnsServer() != "localhost" {
+			s.Target.Host = sx
+		} else {
+			s.Target.Host = "223.5.5.5"
+		}
+	}
+	//是否开启了强制走TCP  And 如果是DNS请求则不用判断了，直接强制走TCP
+	if s.Global.isMustTcp || s.Target.Port == 853 {
 		if s.Global.disableTCP {
 			return
 		}
@@ -1010,11 +1012,7 @@ func (s *proxyRequest) https() {
 	var serverName string
 	var tlsConn *tls.Conn
 	var HelloMsg *tls.ClientHelloMsg
-	//普通会话升级到TLS会话，并且设置生成的握手证书,限制tls最大版本为1.2,因为1.3可能存在算法不支持
-	//如果某些服务器只支持tls1.3,将会在 tlsConn.ClientHello() 函数中自动纠正为 tls1.3
-	//tlsConfig := &tls.Config{MaxVersion: tls.VersionTLS13, NextProtos: []string{http.H11Proto}, InsecureSkipVerify: true}
 	tlsConfig := &tls.Config{MaxVersion: tls.VersionTLS13, NextProtos: []string{http.H2Proto, http.H11Proto}, InsecureSkipVerify: true}
-	//tlsConfig := &tls.Config{MaxVersion: tls.VersionTLS13, NextProtos: []string{http.H11Proto}, InsecureSkipVerify: true}
 	var hook bytes.Buffer
 	s.RwObj.Hook = &hook
 	tlsConn = tls.Server(s.RwObj, tlsConfig)
@@ -1089,6 +1087,7 @@ func (s *proxyRequest) https() {
 				tlsConfig.Certificates = []tls.Certificate{*certificate}
 				tlsConfig.ServerName = ServerName
 				tlsConfig.InsecureSkipVerify = true
+				//tlsConfig.CipherSuites=
 				//继续握手
 				err = tlsConn.ServerHandshake(HelloMsg)
 				if err != nil {
@@ -1104,7 +1103,7 @@ func (s *proxyRequest) https() {
 						s.Error(err, true)
 						return
 					}
-					s.Error(clientHandshakeFail, true)
+					s.Error(errors.New(fmt.Sprintf("%s [ %s ]", clientHandshakeFail, err.Error())), true)
 					return
 				}
 				_ = tlsConn.SetDeadline(time.Now().Add(30 * time.Second))
@@ -1158,7 +1157,7 @@ func (s *proxyRequest) https() {
 	s.httpProcessing(nil, public.TagTcpSSLAgreement)
 }
 
-var clientHandshakeFail = errors.New("与客户端握手失败")
+var clientHandshakeFail = `与客户端握手失败`
 var noHttps = errors.New("No HTTPS ")
 
 func (s *proxyRequest) handleWss() bool {
@@ -1520,6 +1519,10 @@ func (s *Sunny) tcpRules(server, Host string, dns ...string) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if s.isMustTcp {
+		return true
+	}
+	//如果是DNS请求则不用判断了，直接强制走TCP
+	if strings.HasSuffix(server, ":853") {
 		return true
 	}
 	if s.mustTcpRulesAllow {

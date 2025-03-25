@@ -4,7 +4,6 @@ import "C"
 import (
 	"fmt"
 	"github.com/qtgolang/SunnyNet/SunnyNet"
-	"github.com/qtgolang/SunnyNet/src/GoScriptCode"
 	"github.com/qtgolang/SunnyNet/src/encoding/hex"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"log"
@@ -12,38 +11,57 @@ import (
 )
 
 func Test() {
-	s := SunnyNet.NewSunny()
-	cert := SunnyNet.NewCertManager()
-	ok := cert.LoadP12Certificate("C:\\Users\\Qin\\Desktop\\Cert\\ca6afc5aa40fcbd3.p12", "GXjc75IRAO0T")
-	fmt.Println("载入P12:", ok)
-	fmt.Println("证书名称：", cert.GetCommonName())
-	s.AddHttpCertificate("api.vlightv.com", cert, SunnyNet.HTTPCertRules_Request)
+	var Sunny = SunnyNet.NewSunny()
+	/*
+		//载入自定义证书
+		cert := SunnyNet.NewCertManager()
+		ok := cert.LoadP12Certificate("C:\\Users\\Qin\\Desktop\\Cert\\ca6afc5aa40fcbd3.p12", "GXjc75IRAO0T")
+		fmt.Println("载入P12:", ok)
+		fmt.Println("证书名称：", cert.GetCommonName())
 
-	//如果在Go中使用 设置Go的回调地址
-	//s.SetGlobalProxy("socket://137.11.0.11:205", 30000)
-	s.SetScriptCall(func(Context int, info ...any) {
-		fmt.Println("x脚本日志", fmt.Sprintf("%v", info))
-	}, func(Context int, code []byte) {})
-	s.SetScriptCode(string(GoScriptCode.DefaultCode))
-	//s.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
-	s.SetGoCallback(nil, nil, WSCallback, nil)
-	//s.SetMustTcpRegexp("*.baidu.com")
-	s.CompileProxyRegexp("127.0.0.1;[::1];192.168.*")
+		//给指定域名使用这个证书
+		Sunny.AddHttpCertificate("api.vlightv.com", cert, SunnyNet.HTTPCertRules_Request)
 
-	//s.MustTcp(true)
-	//s.DisableTCP(true)
-	//s.SetGlobalProxy("socket://192.168.31.1:4321", 60000)
-	s.SetMustTcpRegexp("tpstelemetry.tencent.com", true)
+	*/
+
+	/*
+		log := func(Context int, info ...any) {
+			fmt.Println("x脚本日志", fmt.Sprintf("%v", info))
+		}
+		save := func(Context int, code []byte) {
+			//在这里将code 储存到文件，下次启动时，载入恢复
+		}
+		Sunny.SetScriptCall(log, save)
+		//载入上次保存的脚本代理
+		Sunny.SetScriptCode(string(GoScriptCode.DefaultCode))
+	*/
+
+	/*
+		//设置全局上游代理
+		Sunny.SetGlobalProxy("socket://192.168.31.1:4321", 60000)
+
+		//指定IP或域名不使用全局的上游代理
+		Sunny.CompileProxyRegexp("127.0.0.1;[::1];192.168.*;*.baidu.com")
+	*/
+
+	/*
+		//开启强制走TCP,开启后 https 将不会解密 直接转发数据流量
+		Sunny.MustTcp(true)
+	*/
+	/*
+		//禁止TCP，所有TCP流量将直接断开连接
+		Sunny.DisableTCP(true)
+	*/
+
+	/*
+		//设置强制走TCP规则，使用这个函数后 就不要使用 Sunny.MustTcp(true) 否则这个函数无效
+		Sunny.SetMustTcpRegexp("tpstelemetry.tencent.com", true)
+	*/
+	//设置回调地址
+	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
 	Port := 2025
-	//s.SetMustTcpRegexp("*.baidu.com")
-	s.SetPort(Port).Start()
-	//s.SetIEProxy()
-	s.SetHTTPRequestMaxUpdateLength(10086)
-	//fmt.Println(s.OpenDrive(false))
-	//s.ProcessALLName(true, false)
-
-	//s.ProcessAddName("WeChat.exe")
-	err := s.Error
+	Sunny.SetPort(Port).Start()
+	err := Sunny.Error
 	if err != nil {
 		panic(err)
 	}
@@ -91,7 +109,6 @@ func WSCallback(Conn SunnyNet.ConnWebSocket) {
 	}
 }
 func TcpCallback(Conn SunnyNet.ConnTCP) {
-
 	switch Conn.Type() {
 	case public.SunnyNetMsgTypeTCPAboutToConnect: //即将连接
 		mode := string(Conn.Body())

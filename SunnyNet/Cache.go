@@ -16,48 +16,10 @@ import (
 	"github.com/qtgolang/SunnyNet/src/public"
 	"io"
 	"net"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
 )
-
-var dnsLock sync.Mutex
-var dnsMap = make(map[string]*IpValue)
-
-type IpValue struct {
-	Value string
-	Time  time.Time
-}
-
-func IpDns(r string) string {
-	dnsLock.Lock()
-	defer dnsLock.Unlock()
-	s := dnsMap[r]
-	if s != nil {
-		//30分钟 更新一次DNS解析
-		if time.Now().Sub(s.Time) < time.Minute*10 {
-			return s.Value
-		}
-	}
-	u, _ := url.Parse("https://" + r)
-	host := u.Hostname()
-	ip, e := net.ResolveIPAddr("ip", host)
-	if e != nil {
-		return ""
-	}
-	if ip.IP == nil {
-		return ""
-	}
-	Port := u.Port()
-	if ip.IP.To4() == nil {
-		s = &IpValue{Value: "[" + ip.IP.String() + "]:" + Port, Time: time.Now()}
-	} else {
-		s = &IpValue{Value: ip.IP.String() + ":" + Port, Time: time.Now()}
-	}
-	dnsMap[r] = s
-	return s.Value
-}
 
 type _whois map[string]*_cert
 
@@ -100,14 +62,6 @@ func clean() {
 			}
 		}
 		whoisLock.Unlock()
-		//-------------------------------------------
-		dnsLock.Lock()
-		for key, v := range dnsMap {
-			if time.Now().Sub(v.Time) > time.Minute*10 {
-				delete(dnsMap, key)
-			}
-		}
-		dnsLock.Unlock()
 	}
 }
 func init() {
@@ -151,7 +105,7 @@ func ClientRequestIsHttps(Sunny *Sunny, server string, bytesData []byte) (res by
 	if ip == nil {
 		first = dns.GetFirstIP(proxyHost, "")
 		if first != nil {
-			conn, _ = Sunny.proxy.Dial("tcp", SunnyProxy.FormatIP(first, proxyPort))
+			conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(first, proxyPort), time.Second*3)
 		}
 		if conn == nil {
 			ips, _ = dns.LookupIP(proxyHost, "", nil)
@@ -179,7 +133,7 @@ func ClientRequestIsHttps(Sunny *Sunny, server string, bytesData []byte) (res by
 			}
 		}
 	} else {
-		conn, _ = Sunny.proxy.Dial("tcp", SunnyProxy.FormatIP(ip, proxyPort))
+		conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), time.Second*3)
 	}
 	if conn == nil {
 		return whoisUndefined

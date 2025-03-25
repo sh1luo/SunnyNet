@@ -438,14 +438,10 @@ func (u *Upgrader) UpgradeClient(r *http.Request, Response *http.Response, netCo
 		if ext[""] != "permessage-deflate" {
 			continue
 		}
-		_, snct := ext["server_no_context_takeover"]
-		_, cnct := ext["client_no_context_takeover"]
-		if snct || cnct {
-			c.window_bytes.Reset()
-			c.window = true
-			c.newCompressionWriter = compressNoContextTakeover
-			c.newDecompressionReader = decompressNoContextTakeover2
-		}
+		c.window_bytes.Reset()
+		c.window = true
+		c.newCompressionWriter = compressNoContextTakeover
+		c.newDecompressionReader = decompressNoContextTakeover2
 		break
 	}
 	var bs bytes.Buffer

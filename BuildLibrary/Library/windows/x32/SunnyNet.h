@@ -382,7 +382,7 @@ extern __declspec(dllexport) GoUint8 Java_com_SunnyNet_api_SetTcpBody(GoUintptr 
 Java_com_SunnyNet_api_SetTcpAgent 给当前TCP连接设置代理 仅限 TCP回调 即将连接时使用 仅支持S5代理 例如 socket5://admin:123456@127.0.0.1:8888
 */
 //
-extern __declspec(dllexport) GoUint8 Java_com_SunnyNet_api_SetTcpAgent(GoUintptr envObj, GoUintptr clazz, GoInt64 MessageId, GoUintptr ProxyUrl);
+extern __declspec(dllexport) GoUint8 Java_com_SunnyNet_api_SetTcpAgent(GoUintptr envObj, GoUintptr clazz, GoInt64 MessageId, GoUintptr ProxyUrl, GoInt outTime);
 
 /*
 Java_com_SunnyNet_api_TcpCloseClient 根据唯一ID关闭指定的TCP连接  唯一ID在回调参数中
@@ -784,6 +784,11 @@ extern __declspec(dllexport) GoUint8 Java_com_SunnyNet_api_WebsocketReadWrite(Go
 Java_com_SunnyNet_api_WebsocketClose Websocket客户端 断开
 */
 extern __declspec(dllexport) void Java_com_SunnyNet_api_WebsocketClose(GoUintptr envObj, GoUintptr clazz, GoInt64 Context);
+
+/*
+Java_com_SunnyNet_api_WebsocketHeartbeat Websocket客户端 心跳设置
+*/
+extern __declspec(dllexport) void Java_com_SunnyNet_api_WebsocketHeartbeat(GoUintptr envObj, GoUintptr clazz, GoInt64 Context, GoInt64 HeartbeatTime, GoUintptr call);
 
 /*
 Java_com_SunnyNet_api_WebsocketDial Websocket客户端 连接
@@ -1276,7 +1281,7 @@ extern __declspec(dllexport) GoUint8 SetTcpBody(GoInt MessageId, GoInt MsgType, 
 SetTcpAgent 给当前TCP连接设置代理 仅限 TCP回调 即将连接时使用 仅支持S5代理 例如 socket5://admin:123456@127.0.0.1:8888
 */
 //
-extern __declspec(dllexport) GoUint8 SetTcpAgent(GoInt MessageId, char* ProxyUrl);
+extern __declspec(dllexport) GoUint8 SetTcpAgent(GoInt MessageId, char* ProxyUrl, GoInt outTime);
 
 /*
 TcpCloseClient 根据唯一ID关闭指定的TCP连接  唯一ID在回调参数中
@@ -1764,6 +1769,11 @@ extern __declspec(dllexport) GoUint8 WebsocketReadWrite(GoInt Context, GoUintptr
 WebsocketClose Websocket客户端 断开
 */
 extern __declspec(dllexport) void WebsocketClose(GoInt Context);
+
+/*
+WebsocketHeartbeat Websocket客户端 心跳设置
+*/
+extern __declspec(dllexport) void WebsocketHeartbeat(GoInt Context, GoInt HeartbeatTime, GoInt call);
 
 /*
 WebsocketDial Websocket客户端 连接

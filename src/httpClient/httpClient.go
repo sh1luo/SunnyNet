@@ -277,6 +277,15 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 		if strings.ToLower(address) == "localhost" {
 			return res.RequestProxy.Dial(network, "127.0.0.1:"+port)
 		}
+		_serverIP_, ok := req.Context().Value("_serverIP_").(string)
+		if ok && _serverIP_ != "" {
+			ip := net.ParseIP(_serverIP_)
+			conn, er := res.RequestProxy.DialWithTimeout(network, fmt.Sprintf("%s:%s", ip.String(), port), 5*time.Second)
+			if conn != nil {
+				dns.SetFirstIP(address, ProxyHost, ip)
+				return conn, er
+			}
+		}
 		var retries bool
 		for {
 			if !isLookupIP {
@@ -300,8 +309,18 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 				retries = true
 				continue
 			}
+			var AllLocalIP = true
+			for _, ip := range ips {
+				if ip.String() != "127.0.0.1" {
+					AllLocalIP = false
+					break
+				}
+			}
+			if AllLocalIP && len(ips) != 0 {
+				return nil, errors.New(fmt.Sprintf("Address [%s] points to 127.0.0.1", address))
+			}
 			ip := extractAndRemoveIP(&ips)
-			if ip != nil {
+			if ip != nil && ip.String() != "127.0.0.1" {
 				if ip.To4() != nil {
 					conn, er := res.RequestProxy.DialWithTimeout(network, fmt.Sprintf("%s:%s", ip.String(), port), 2*time.Second)
 					if conn != nil {

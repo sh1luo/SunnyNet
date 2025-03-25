@@ -80,22 +80,22 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 			} else {
 				res.URL.Scheme = s.defaultScheme
 			}
-			res.URL.Host = res.Host
-			a := IpDns(res.Host)
-			if a == "" && req.Header.Get("host") != "" {
+			if res.Host == "" && req.Header.Get("host") != "" {
 				res.URL.Host = req.Header.Get("host")
 				u, _ := url.Parse(res.URL.String())
 				if u != nil {
 					res.URL = u
 					res.Host = u.Host
 				}
-			} else if a == "" && r.Target.Host != "" {
+			} else if res.Host == "" && r.Target.Host != "" {
 				res.URL.Host = r.Target.String()
 				u, _ := url.Parse(res.URL.String())
 				if u != nil {
 					res.URL = u
 					res.Host = u.Host
 				}
+			} else {
+				res.URL.Host = res.Host
 			}
 			p := res.URL.Port()
 			if (p == "443" && res.URL.Scheme == "https") || (p == "80" && res.URL.Scheme == "http") {

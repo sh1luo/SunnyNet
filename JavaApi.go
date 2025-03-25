@@ -792,9 +792,9 @@ Java_com_SunnyNet_api_SetTcpAgent 给当前TCP连接设置代理 仅限 TCP回�
 */
 //
 //export Java_com_SunnyNet_api_SetTcpAgent
-func Java_com_SunnyNet_api_SetTcpAgent(envObj uintptr, clazz uintptr, MessageId int64, ProxyUrl uintptr) bool {
+func Java_com_SunnyNet_api_SetTcpAgent(envObj uintptr, clazz uintptr, MessageId int64, ProxyUrl uintptr, outTime int) bool {
 	env := Env(envObj)
-	return Api.SetTcpAgent(int(MessageId), env.GetString(ProxyUrl))
+	return Api.SetTcpAgent(int(MessageId), env.GetString(ProxyUrl), outTime)
 }
 
 /*
