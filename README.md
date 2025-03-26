@@ -68,10 +68,10 @@ func main() {
 			fmt.Println("x脚本日志", fmt.Sprintf("%v", info))
 		}
 		save := func(Context int, code []byte) {
-			//在这里将code 储存到文件，下次启动时，载入恢复
+			//在这里将code代码 储存到文件，下次启动时，载入恢复
 		}
 		Sunny.SetScriptCall(log, save)
-		//载入上次保存的脚本代理
+		//载入上次保存的脚本代码
 		Sunny.SetScriptCode(string(GoScriptCode.DefaultCode))
 	*/
 
