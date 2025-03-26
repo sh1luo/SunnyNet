@@ -664,6 +664,11 @@ Java_com_SunnyNet_api_HTTPSetTimeouts HTTP 客户端 设置超时 毫秒
 */
 extern __declspec(dllexport) void Java_com_SunnyNet_api_HTTPSetTimeouts(GoUintptr envObj, GoUintptr clazz, GoInt64 Context, GoInt64 t1);
 
+// Java_com_SunnyNet_api_HTTPSetServerIP
+// HTTP 客户端 设置真实连接IP地址，
+//
+extern __declspec(dllexport) void Java_com_SunnyNet_api_HTTPSetServerIP(GoUintptr envObj, GoUintptr clazz, GoInt64 Context, GoUintptr ServerIP);
+
 /*
 Java_com_SunnyNet_api_HTTPSetProxyIP HTTP 客户端 设置代理IP 仅支持Socket5和http 例如 socket5://admin:123456@127.0.0.1:8888 或 http://admin:123456@127.0.0.1:8888
 */
@@ -1648,6 +1653,11 @@ extern __declspec(dllexport) void HTTPSendBin(GoInt Context, GoUintptr body, GoI
 HTTPSetTimeouts HTTP 客户端 设置超时 毫秒
 */
 extern __declspec(dllexport) void HTTPSetTimeouts(GoInt Context, GoInt t1);
+
+// HTTPSetServerIP
+// HTTP 客户端 设置真实连接IP地址，
+//
+extern __declspec(dllexport) void HTTPSetServerIP(GoInt Context, char* ServerIP);
 
 /*
 HTTPSetProxyIP HTTP 客户端 设置代理IP 仅支持Socket5和http 例如 socket5://admin:123456@127.0.0.1:8888 或 http://admin:123456@127.0.0.1:8888

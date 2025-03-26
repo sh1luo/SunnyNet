@@ -57,9 +57,12 @@ func Test() {
 		//设置强制走TCP规则，使用这个函数后 就不要使用 Sunny.MustTcp(true) 否则这个函数无效
 		Sunny.SetMustTcpRegexp("tpstelemetry.tencent.com", true)
 	*/
+
+	Sunny.SetMustTcpRegexp("124.221.161.122", true)
+	//Sunny.SetGlobalProxy("socket://127.0.0.1:2022", 60000)
 	//设置回调地址
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
-	Port := 2025
+	Port := 2028
 	Sunny.SetPort(Port).Start()
 	err := Sunny.Error
 	if err != nil {
@@ -87,6 +90,7 @@ func HttpCallback(Conn SunnyNet.ConnHTTP) {
 	}
 }
 func WSCallback(Conn SunnyNet.ConnWebSocket) {
+	return
 	switch Conn.Type() {
 	case public.WebsocketConnectionOK: //连接成功
 		log.Println("PID", Conn.PID(), "Websocket 连接成功:", Conn.URL())
@@ -109,6 +113,7 @@ func WSCallback(Conn SunnyNet.ConnWebSocket) {
 	}
 }
 func TcpCallback(Conn SunnyNet.ConnTCP) {
+	return
 	switch Conn.Type() {
 	case public.SunnyNetMsgTypeTCPAboutToConnect: //即将连接
 		mode := string(Conn.Body())

@@ -61,3 +61,7 @@ func (w *ReadWriteObject) Read(b []byte) (nn int, err error) {
 	}
 	return i, e
 }
+
+func (w *ReadWriteObject) Buffered() int {
+	return w.ReadWriter.Reader.Buffered()
+}

@@ -1302,6 +1302,15 @@ func Java_com_SunnyNet_api_HTTPSetTimeouts(envObj uintptr, clazz uintptr, Contex
 	Api.HTTPSetTimeouts(int(Context), int(t1))
 }
 
+// Java_com_SunnyNet_api_HTTPSetServerIP
+// HTTP 客户端 设置真实连接IP地址，
+//
+//export Java_com_SunnyNet_api_HTTPSetServerIP
+func Java_com_SunnyNet_api_HTTPSetServerIP(envObj uintptr, clazz uintptr, Context int64, ServerIP uintptr) {
+	env := Env(envObj)
+	Api.HTTPSetServerIP(int(Context), env.GetString(ServerIP))
+}
+
 /*
 Java_com_SunnyNet_api_HTTPSetProxyIP HTTP 客户端 设置代理IP 仅支持Socket5和http 例如 socket5://admin:123456@127.0.0.1:8888 或 http://admin:123456@127.0.0.1:8888
 */

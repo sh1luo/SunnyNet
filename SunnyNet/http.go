@@ -56,7 +56,7 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 	}
 	r := s.clone()
 	defer r.free()
-	ctx, ch := context.WithCancel(context.Background())
+	ctx, ch := context.WithCancel(context.WithValue(context.Background(), public.Connect_Raw_Address, r.Target.String()))
 	defer ch()
 	res := req.Clone(ctx)
 	if res.GetIsNullBody() {
@@ -75,10 +75,10 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 	{
 		res.RequestURI = ""
 		if res.URL != nil {
-			if s.defaultScheme == "" || req.URL.Scheme == "https" {
+			if r.defaultScheme == "" || req.URL.Scheme == "https" {
 				res.URL.Scheme = "https"
 			} else {
-				res.URL.Scheme = s.defaultScheme
+				res.URL.Scheme = r.defaultScheme
 			}
 			if res.Host == "" && req.Header.Get("host") != "" {
 				res.URL.Host = req.Header.Get("host")
@@ -86,6 +86,9 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 				if u != nil {
 					res.URL = u
 					res.Host = u.Host
+				}
+				if r.Target.Host == "" && r.Target.Port == 0 {
+					r.Target.Parse(res.Host, 0)
 				}
 			} else if res.Host == "" && r.Target.Host != "" {
 				res.URL.Host = r.Target.String()
@@ -95,8 +98,18 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 					res.Host = u.Host
 				}
 			} else {
-				res.URL.Host = res.Host
+				if r.Target.Host == "" && r.Target.Port == 0 {
+					r.Target.Parse(res.Host, 0)
+				}
+				aIP := TargetInfo{}
+				aIP.Parse(res.Host, 0)
+				if !aIP.IsDomain() && aIP.Host != s.Target.Host {
+					res.URL.Host = r.Target.String()
+				} else {
+					res.URL.Host = res.Host
+				}
 			}
+
 			p := res.URL.Port()
 			if (p == "443" && res.URL.Scheme == "https") || (p == "80" && res.URL.Scheme == "http") {
 				host, _, _ := net.SplitHostPort(res.Host)
@@ -109,7 +122,6 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 				res.Host = "[" + res.URL.Host + "]"
 			}
 		}
-
 	}
 	r.Response.rw = rw
 	if Length < 4096 {

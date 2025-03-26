@@ -263,6 +263,20 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 				cc.Timeout = 24 * time.Hour
 			}
 		}()
+		_serverIP_, ok := req.Context().Value(public.Connect_Raw_Address).(string)
+		if ok && _serverIP_ != "" {
+			address2, _, err2 := net.SplitHostPort(_serverIP_)
+			if err2 == nil {
+				ip := net.ParseIP(address2)
+				if ip != nil {
+					conn, er := res.RequestProxy.DialWithTimeout(network, _serverIP_, 3*time.Second)
+					if conn != nil {
+						return conn, er
+					}
+				}
+			}
+		}
+
 		address, port, err := net.SplitHostPort(addr)
 		if err != nil {
 			return nil, err
@@ -277,15 +291,7 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 		if strings.ToLower(address) == "localhost" {
 			return res.RequestProxy.Dial(network, "127.0.0.1:"+port)
 		}
-		_serverIP_, ok := req.Context().Value("_serverIP_").(string)
-		if ok && _serverIP_ != "" {
-			ip := net.ParseIP(_serverIP_)
-			conn, er := res.RequestProxy.DialWithTimeout(network, fmt.Sprintf("%s:%s", ip.String(), port), 5*time.Second)
-			if conn != nil {
-				dns.SetFirstIP(address, ProxyHost, ip)
-				return conn, er
-			}
-		}
+
 		var retries bool
 		for {
 			if !isLookupIP {

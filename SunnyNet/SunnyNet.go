@@ -828,12 +828,39 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 		return
 	}
 	if public.IsHttpMethod(public.GetMethod(hh)) {
+		var buff bytes.Buffer
+		buff.Write(aheadData)
+		var isRules bool
+		for {
+			//找到HOST 进行匹配是否强制走 TCP
+			bs, e := s.RwObj.ReadSlice('\n')
+			buff.Write(bs)
+			if e != nil || len(bs) < 3 {
+				break
+			}
+			ms := string(bs)
+			arr := strings.SplitN(ms, ":", 2)
+			if len(arr) > 1 && strings.ToLower(strings.TrimSpace(arr[0])) == "host" {
+				host := strings.TrimSpace(arr[1])
+				isRules = s.Global.tcpRules(host, s.Target.Host)
+				break
+			}
+		}
+		if isRules {
+			if s.Global.disableTCP {
+				return
+			}
+			s.NoRepairHttp = true
+			s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, buff.Bytes()))
+			s.MustTcpProcessing(public.TagMustTCP)
+			return
+		}
 		if Tag == public.TagTcpSSLAgreement {
 			s.defaultScheme = "https"
 		} else {
 			s.defaultScheme = "http"
 		}
-		s.h1Request(aheadData)
+		s.h1Request(buff.Bytes())
 		return
 	}
 	s.NoRepairHttp = true
@@ -961,9 +988,6 @@ func (s *proxyRequest) doRequest() error {
 	var n net.Conn
 	var err error
 	var Close func()
-	if !s.Target.IsDomain() {
-		s.Request.SetContext("_serverIP_", s.Target.Host)
-	}
 	do, n, err, Close = httpClient.Do(s.Request, s.Proxy, false, s.TlsConfig, s.SendTimeout, s.getTLSValues, s.Conn)
 	s.Response.Conn = n
 	ip, _ := s.Request.Context().Value(public.SunnyNetServerIpTags).(string)
@@ -1110,6 +1134,16 @@ func (s *proxyRequest) https() {
 			}
 		}
 	} else {
+		isRules := s.Global.tcpRules(serverName, s.Target.Host)
+		if isRules {
+			if s.Global.disableTCP {
+				return
+			}
+			s.NoRepairHttp = true
+			s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, hook.Bytes()))
+			s.MustTcpProcessing(public.TagMustTCP)
+			return
+		}
 		err = noHttps
 	}
 	s.RwObj.Hook = nil

@@ -143,6 +143,18 @@ func HTTPSetTimeouts(Context int, t1 int) {
 	}
 }
 
+// HTTPSetServerIP
+// HTTP 客户端 设置真实连接IP地址，
+func HTTPSetServerIP(Context int, s string) {
+	k := LoadHTTPClient(Context)
+	if k == nil {
+		return
+	}
+	k.lock.Lock()
+	defer k.lock.Unlock()
+	k.req.SetContext(public.Connect_Raw_Address, s)
+}
+
 // HTTPSendBin
 // HTTP 客户端 发送Body
 func HTTPSendBin(Context int, data []byte) {

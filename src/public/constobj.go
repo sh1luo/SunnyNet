@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const SunnyVersion = "2025-03-25"
+const SunnyVersion = "2025-03-26"
 const Information = `
 ------------------------------------------------------
        欢迎使用 SunnyNet 网络中间件 - V` + SunnyVersion + `   
@@ -98,9 +98,9 @@ const (
 	SunnyNetRawRequestBody       = http.SunnyNetRawRequestBody
 	SunnyNetRawRequestBodyLength = http.SunnyNetRawRequestBodyLength
 	SunnyNetRawBodySaveFilePath  = http.SunnyNetRawBodySaveFilePath
-
-	HTTPClientTags       = "SunnyNetHTTPClient"
-	SunnyNetServerIpTags = websocket.SunnyNetServerIpTags
+	Connect_Raw_Address          = "_connect_address_" //连接原始地址
+	HTTPClientTags               = "SunnyNetHTTPClient"
+	SunnyNetServerIpTags         = websocket.SunnyNetServerIpTags
 )
 
 // 用户浏览器访问 以下地址 可以下载证书(要访问以下地址用户必须设置代理)

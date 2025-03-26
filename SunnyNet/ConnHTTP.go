@@ -69,6 +69,10 @@ func (h *httpConn) UpdateURL(NewUrl string) bool {
 	h._request.URL = a
 	h._request.Host = h._request.URL.Host
 	h._request.RequestURI = ""
+	h._request.SetContext(public.Connect_Raw_Address, h._request.URL.Host)
+	if h._request.Header.Get("host") != "" {
+		h._request.Header.Set("host", h._request.URL.Host)
+	}
 	return true
 }
 

@@ -1247,7 +1247,7 @@ window.builtCmdWords =  [
             {value: '参数1:jsonText       文本型类型'},
             {value: '返回值:JSON对象'},
             {value: '**示例代码**'},
-            {value: '```go\n//解析JSON\nobj := JsonParse(data) \n//设置值\nobj.SetData("data.[0].path", "1111")\nobj.SetData("data.[0].ts", 123456)\n//获取值,无论值是什么类型都是返回字符串\nobj.GetData("data.[0].path")\n//获取成员数量\nobj.GetCount("data")\n```'},
+            {value: '```go\n//解析JSON\nobj := JsonParse(data) \n//设置值\nobj.SetData("data.[0].path", "1111")\nobj.SetData("data.[0].ts", 123456)\n//获取值,无论值是什么类型都是返回字符串\nobj.GetData("data.[0].path")\n//获取成员数量\nobj.GetCount("data")\n//取全部数据-返回字符串\nobj.ToString()\n```'},
         ]
     },
     {

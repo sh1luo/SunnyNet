@@ -1211,6 +1211,14 @@ func HTTPSetTimeouts(Context int, t1 int) {
 	Api.HTTPSetTimeouts(Context, t1)
 }
 
+// HTTPSetServerIP
+// HTTP 客户端 设置真实连接IP地址，
+//
+//export HTTPSetServerIP
+func HTTPSetServerIP(Context int, ServerIP *C.char) {
+	Api.HTTPSetServerIP(Context, C.GoString(ServerIP))
+}
+
 /*
 HTTPSetProxyIP HTTP 客户端 设置代理IP 仅支持Socket5和http 例如 socket5://admin:123456@127.0.0.1:8888 或 http://admin:123456@127.0.0.1:8888
 */
