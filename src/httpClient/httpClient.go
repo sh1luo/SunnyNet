@@ -305,11 +305,14 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 					}
 				}
 				ips, _ = dns.LookupIP(address, ProxyHost, LookupIPdial)
+				if len(ips) < 1 {
+					return nil, noIP
+				}
 			}
 			if len(ips) < 1 {
 				dns.SetFirstIP(address, ProxyHost, nil)
 				if retries {
-					return nil, noIP
+					return nil, connectionFailed
 				}
 				isLookupIP = false
 				retries = true
@@ -366,6 +369,7 @@ func extractAndRemoveIP(ips *[]net.IP) net.IP {
 }
 
 var noIP = errors.New("DNS解析失败,无可用IP地址")
+var connectionFailed = errors.New("连接 DNS解析的所有IP地址 都失败了")
 
 func configureHTTP2Transport(Tr *http.Transport, cfg *tls.Config) {
 	// 检查是否配置了 HTTP/2.0 协议

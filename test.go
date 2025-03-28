@@ -58,11 +58,11 @@ func Test() {
 		Sunny.SetMustTcpRegexp("tpstelemetry.tencent.com", true)
 	*/
 
-	Sunny.SetMustTcpRegexp("124.221.161.122", true)
+	//Sunny.SetMustTcpRegexp("124.221.161.122", true)
 	//Sunny.SetGlobalProxy("socket://127.0.0.1:2022", 60000)
 	//设置回调地址
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
-	Port := 2028
+	Port := 2025
 	Sunny.SetPort(Port).Start()
 	err := Sunny.Error
 	if err != nil {
