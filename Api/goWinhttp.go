@@ -152,7 +152,7 @@ func HTTPSetServerIP(Context int, s string) {
 	}
 	k.lock.Lock()
 	defer k.lock.Unlock()
-	k.req.SetContext(public.Connect_Raw_Address, s)
+	k.req.SetContext(public.Connect_Raw_Address, func() string { return s })
 }
 
 // HTTPSendBin

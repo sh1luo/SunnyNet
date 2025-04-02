@@ -34,7 +34,14 @@ func Do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, c
 		default:
 			break
 		}
-
+	}
+	{
+		if req != nil && req.Header != nil {
+			Cookies := req.Header.GetArray("Cookie")
+			if len(Cookies) > 1 {
+				req.Header.Set("Cookie", strings.Join(Cookies, "; "))
+			}
+		}
 	}
 	cfg := config.Clone()
 	if req.URL != nil && req.URL.Scheme != "http" {
@@ -263,15 +270,18 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 				cc.Timeout = 24 * time.Hour
 			}
 		}()
-		_serverIP_, ok := req.Context().Value(public.Connect_Raw_Address).(string)
-		if ok && _serverIP_ != "" {
-			address2, _, err2 := net.SplitHostPort(_serverIP_)
-			if err2 == nil {
-				ip := net.ParseIP(address2)
-				if ip != nil {
-					conn, er := res.RequestProxy.DialWithTimeout(network, _serverIP_, 3*time.Second)
-					if conn != nil {
-						return conn, er
+		_serverIP_func, ok := req.Context().Value(public.Connect_Raw_Address).(func() string)
+		if ok && _serverIP_func != nil {
+			_serverIP_ := _serverIP_func()
+			if _serverIP_ != "" {
+				address2, _, err2 := net.SplitHostPort(_serverIP_)
+				if err2 == nil {
+					ip := net.ParseIP(address2)
+					if ip != nil {
+						conn, er := res.RequestProxy.DialWithTimeout(network, _serverIP_, 3*time.Second)
+						if conn != nil {
+							return conn, er
+						}
 					}
 				}
 			}
