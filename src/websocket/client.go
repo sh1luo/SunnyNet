@@ -16,6 +16,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -332,18 +333,15 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 		resp.Body = ioutil.NopCloser(bytes.NewReader(buf[:n]))
 		return nil, resp, "", ErrBadHandshake
 	}
-
-	for _, ext := range ParseExtensions(resp.Header) {
+	extensions := ParseExtensions(resp.Header)
+	for _, ext := range extensions {
 		if ext[""] != "permessage-deflate" {
 			continue
 		}
-		_, snct := ext["server_no_context_takeover"]
-		_, cnct := ext["client_no_context_takeover"]
-		if !snct || !cnct {
-			return nil, resp, "", errInvalidCompression
-		}
 		conn.newCompressionWriter = compressNoContextTakeover
 		conn.newDecompressionReader = decompressNoContextTakeover2
+
+		conn.Window_Size_Max = 1 << Get_Client_max_window_bits(resp.Header, extensions)
 		break
 	}
 
@@ -533,26 +531,55 @@ func (d *Dialer) ConnDialContext(request *http.Request, ProxyUrl *SunnyProxy.Pro
 		resp.Body = ioutil.NopCloser(bytes.NewReader(buf[:n]))
 		return nil, resp, ErrBadHandshake
 	}
-
-	for _, ext := range ParseExtensions(resp.Header) {
+	extensions := ParseExtensions(resp.Header)
+	for _, ext := range extensions {
 		if ext[""] != "permessage-deflate" {
 			continue
 		}
 		conn.newCompressionWriter = compressNoContextTakeover
 		conn.newDecompressionReader = decompressNoContextTakeover2
+		conn.Window_Size_Max = 1 << Get_Client_max_window_bits(resp.Header, extensions)
 		conn.window = true
 		conn.window_bytes.Reset()
 		break
 	}
-
 	resp.Body = ioutil.NopCloser(bytes.NewReader([]byte{}))
 	conn.subprotocol = resp.Header.Get("Sec-Websocket-Protocol")
-
 	netConn.SetDeadline(time.Time{})
 	netConn = nil // to avoid close in defer.
 	return conn, resp, nil
 }
+func Get_Client_max_window_bits(Header http.Header, extensions []map[string]string) int {
 
+	// 如果 Sec-WebSocket-Extensions 头部没有找到,则从 ParseExtensions 中获取
+	for _, ext := range extensions {
+		for k, v := range ext {
+			if strings.EqualFold(k, "client_max_window_bits") {
+				vv, err := strconv.Atoi(v)
+				if err == nil && vv >= 8 && vv <= 15 {
+					return vv
+				}
+				return 15
+			}
+		}
+	}
+	//  从 Sec-WebSocket-Extensions 头部获取 client_max_window_bits 参数
+	for _, s := range Header.GetArray("Sec-WebSocket-Extensions") {
+		strs := strings.Split(strings.TrimSpace(s), ";")
+		for _, param := range strs {
+			kv := strings.Split(param, "=")
+			if len(kv) == 2 && strings.EqualFold(strings.TrimSpace(kv[0]), "client_max_window_bits") {
+				vv, err := strconv.Atoi(strings.TrimSpace(kv[1]))
+				if err == nil && vv >= 8 && vv <= 15 {
+					return vv
+				}
+				return 15
+			}
+		}
+	}
+	// 如果都没找到,则返回默认值 15
+	return 15
+}
 func doHandshake(tlsConn *tls.Conn, cfg *tls.Config) error {
 	if err := tlsConn.Handshake(); err != nil {
 		return err

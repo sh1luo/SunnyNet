@@ -4,6 +4,7 @@
 
 package websocket
 
+import "C"
 import (
 	"bufio"
 	"bytes"
@@ -434,12 +435,14 @@ func (u *Upgrader) UpgradeClient(r *http.Request, Response *http.Response, netCo
 	protocol := u.selectSubprotocol(r, Response.Header)
 	c := newConn(netConn, true, u.ReadBufferSize, u.WriteBufferSize, u.WriteBufferPool, nil, nil)
 	c.subprotocol = protocol
+	extensions := ParseExtensions(Response.Header)
 	for _, ext := range ParseExtensions(Response.Header) {
 		if ext[""] != "permessage-deflate" {
 			continue
 		}
 		c.window_bytes.Reset()
 		c.window = true
+		c.Window_Size_Max = 1 << Get_Client_max_window_bits(Response.Header, extensions)
 		c.newCompressionWriter = compressNoContextTakeover
 		c.newDecompressionReader = decompressNoContextTakeover2
 		break

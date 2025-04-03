@@ -260,7 +260,6 @@ type Conn struct {
 	enableWriteCompression bool
 	compressionLevel       int
 	newCompressionWriter   func(io.WriteCloser, int) io.WriteCloser
-
 	// Read fields
 	reader  io.ReadCloser // the current reader returned to the application
 	readErr error
@@ -282,6 +281,7 @@ type Conn struct {
 	newDecompressionReader func(io.Reader, []byte) io.ReadCloser
 	window                 bool
 	window_bytes           bytes.Buffer
+	Window_Size_Max        int
 }
 
 func newConn(conn net.Conn, isServer bool, readBufferSize, writeBufferSize int, writeBufferPool BufferPool, br *bufio.Reader, writeBuf []byte) *Conn {
@@ -1075,8 +1075,6 @@ func (r *messageReader) Close() error {
 	return nil
 }
 
-const window_size_max = 1 << 15
-
 // ReadMessage is a helper method for getting a reader using NextReader and
 // reading from that reader to a buffer.
 func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
@@ -1095,16 +1093,26 @@ func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
 
 	if c.readDecompress {
 		i, _ := io.ReadAll(c.newDecompressionReader(c.reader, c.window_bytes.Bytes()))
-		if c.window && c.window_bytes.Len() < window_size_max {
-			// 计算窗口剩余空间
-			availableSpace := window_size_max - c.window_bytes.Len()
-			// 如果当前数据（i）可以完全写入窗口，直接写入
-			if len(i) <= availableSpace {
-				c.window_bytes.Write(i)
-			} else {
-				// 如果当前数据（i）超过了窗口剩余空间，只写入剩余空间的部分
-				c.window_bytes.Write(i[:availableSpace])
+		if c.window {
+			newDataLength := len(i)
+			// 如果新数据长度超过最大窗口大小
+			if newDataLength >= c.Window_Size_Max {
+				c.window_bytes.Reset()
+				c.window_bytes.Write(i[newDataLength-c.Window_Size_Max:]) // 只保留新数据的最后部分
+				return messageType, i, nil
 			}
+			totalLen := c.window_bytes.Len() + newDataLength
+			// 如果总长度超过最大窗口大小
+			if totalLen > c.Window_Size_Max {
+				//正常情况下 overflow 不可能大于  c.window_bytes.Len()
+				//如果 overflow 大于 c.window_bytes.Len()
+				overflow := totalLen - c.Window_Size_Max
+				newData := c.window_bytes.Bytes()[overflow:]
+				c.window_bytes.Reset()
+				c.window_bytes.Write(newData)
+			}
+			// 写入新数据
+			c.window_bytes.Write(i) // 将新数据写入缓存
 		}
 		return messageType, i, nil
 	}

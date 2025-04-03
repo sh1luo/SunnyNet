@@ -1137,13 +1137,13 @@ func relevantCaller() runtime.Frame {
 
 func (w *response) WriteHeader(code int) {
 	if w.conn.hijacked() {
-		caller := relevantCaller()
-		w.conn.server.logf("http: response.WriteHeader on hijacked connection from %s (%s:%d)", caller.Function, path.Base(caller.File), caller.Line)
+		//caller := relevantCaller()
+		//w.conn.server.logf("http: response.WriteHeader on hijacked connection from %s (%s:%d)", caller.Function, path.Base(caller.File), caller.Line)
 		return
 	}
 	if w.wroteHeader {
-		caller := relevantCaller()
-		w.conn.server.logf("http: superfluous response.WriteHeader call from %s (%s:%d)", caller.Function, path.Base(caller.File), caller.Line)
+		//caller := relevantCaller()
+		//w.conn.server.logf("http: superfluous response.WriteHeader call from %s (%s:%d)", caller.Function, path.Base(caller.File), caller.Line)
 		return
 	}
 	checkWriteHeaderCode(code)

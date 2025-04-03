@@ -863,7 +863,7 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 		s.h1Request(buff.Bytes())
 		return
 	}
-	s.NoRepairHttp = true
+	//s.NoRepairHttp = true
 	if len(aheadData) > 0 {
 		s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, aheadData))
 	}
@@ -1028,6 +1028,7 @@ func (s *proxyRequest) https() {
 		if s.Global.disableTCP {
 			return
 		}
+		s.NoRepairHttp = true
 		//开启了强制走TCP，则按TCP流程处理
 		s.MustTcpProcessing(public.TagMustTCP)
 		return
@@ -1876,7 +1877,6 @@ func (s *proxyRequest) sendHttp(req *http.Request) {
 			return
 		}
 	}
-
 	s.CompleteRequest(req)
 }
 

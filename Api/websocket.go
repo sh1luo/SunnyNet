@@ -162,16 +162,13 @@ func WebsocketDial(Context int, URL, Heads string, call int, goCall func(int, in
 	if w.err != nil || resq == nil {
 		return false
 	}
-
-	for _, ext := range websocket.ParseExtensions(resq.Header) {
+	extensions := websocket.ParseExtensions(resq.Header)
+	for _, ext := range extensions {
 		if ext[""] != "permessage-deflate" {
 			continue
 		}
-		_, snct := ext["server_no_context_takeover"]
-		_, cnct := ext["client_no_context_takeover"]
-		if snct || cnct {
-			w.wb.SetWindow(true)
-		}
+		w.wb.Window_Size_Max = 1 << websocket.Get_Client_max_window_bits(resq.Header, extensions)
+		w.wb.SetWindow(true)
 		break
 	}
 	go func() {

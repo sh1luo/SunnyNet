@@ -169,6 +169,18 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 		res.Header = reHeader
 	}
 	Target.Parse(r.Target.String(), 0)
+	/*
+		o := res.Header.GetArray("Sec-WebSocket-Extensions")
+		if len(o) > 0 {
+			var arr []string
+			for _, v := range o {
+				if !strings.EqualFold(v, "permessage-deflate") {
+					arr = append(arr, v)
+				}
+			}
+			res.Header.SetArray("Sec-WebSocket-Extensions", arr)
+		}
+	*/
 	r.sendHttp(res)
 }
 
