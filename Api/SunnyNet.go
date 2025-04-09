@@ -123,7 +123,7 @@ func SetRequestHTTP2Config(MessageId int, h2Config string) bool {
 	}
 	k.Lock.Lock()
 	defer k.Lock.Unlock()
-	k.TlsConfig.NextProtos = []string{http.H11Proto, http.H2Proto}
+	k.TlsConfig.NextProtos = public.HTTP2NextProtos
 	if h2Config != "" {
 		c, e := http.StringToH2Config(h2Config)
 		if e != nil {

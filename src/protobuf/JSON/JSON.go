@@ -13,7 +13,7 @@ type SyJson struct {
 
 func NewSyJson() *SyJson {
 	s := new(SyJson)
-	json.Unmarshal([]byte("{}"), &s._Data)
+	_ = json.Unmarshal([]byte("{}"), &s._Data)
 	return s
 }
 
@@ -24,8 +24,7 @@ func (s *SyJson) Parse(xstr string) bool {
 		s._Data = _Data
 		return false
 	}
-	json.Unmarshal([]byte("{\"/\":"+xstr+"}"), &s._Data)
-	return true
+	return json.Unmarshal([]byte("{\"/\":"+xstr+"}"), &s._Data) == nil
 }
 func (s *SyJson) GetMap() map[string]any {
 	if s._Data == nil {
@@ -73,20 +72,29 @@ func parsePathArray(b string, c []string) ([]string, []string) {
 	}
 	return patharr, c
 }
-func (s *SyJson) SetData(path string, val interface{}) bool {
+func (s *SyJson) SetData(path string, value any) bool {
 	//解析传入的路径
 	var _path []string
 	_path = append(_path, "/")
 	_, _path = parsePathArray(path, _path)
-
+	var val any
+	if _v, ok := value.(*SyJson); ok {
+		val = _v.GetMap()
+	} else {
+		val = value
+	}
 	//如果传入的是空，则重新解析
 	if len(_path) < 2 {
-		var _json interface{}
-		IsOK := json.Unmarshal([]byte("{\"/\":"+val.(string)+"}"), &_json) == nil
-		if IsOK {
-			s._Data = _json
+		v, ok := val.(string)
+		if ok {
+			var _json interface{}
+			IsOK := json.Unmarshal([]byte("{\"/\":"+v+"}"), &_json) == nil
+			if IsOK {
+				s._Data = _json
+			}
+			return IsOK
 		}
-		return IsOK
+		return false
 	}
 	type _type struct {
 		object interface{}
@@ -180,13 +188,17 @@ func (s *SyJson) SetData(path string, val interface{}) bool {
 				if !_IsMap(upper.object) {
 					upper.object = make(map[string]interface{})
 				}
-				_object := upper.object.(map[string]interface{})
-				if lowerdirectory == "" {
-					_object[directory] = val
-					upper.object = _object
-					return
+				_object, ok := upper.object.(map[string]interface{})
+				if ok {
+					if lowerdirectory == "" {
+						_object[directory] = val
+						upper.object = _object
+						return
+					}
+					object.object = _object[directory]
+				} else {
+					upper.object = make(map[string]interface{})
 				}
-				object.object = _object[directory]
 			}
 		}
 	}
@@ -254,7 +266,9 @@ func (s *SyJson) SetData(path string, val interface{}) bool {
 			_object[v[i].Name] = v[i].object
 		}
 	}
-	s._Data.(map[string]interface{})["/"] = v[0].object
+	if ss, ok := s._Data.(map[string]interface{}); ok {
+		ss["/"] = v[0].object
+	}
 	return true
 }
 func (s *SyJson) GetData(path string) string {
@@ -262,7 +276,11 @@ func (s *SyJson) GetData(path string) string {
 
 	PathToTheArray, _ := parsePathArray(path, nil)
 	//先获取顶级
-	data := s._Data.(map[string]interface{})["/"]
+	ss, ok := s._Data.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	data := ss["/"]
 
 	//如果传入的是空，返回全部
 	if len(PathToTheArray) == 0 {
@@ -307,8 +325,8 @@ func (s *SyJson) GetData(path string) string {
 				default:
 					break
 				}
-				obj := data.([]interface{})
-				if obj == nil {
+				obj, o := data.([]interface{})
+				if obj == nil || !o {
 					return ""
 				}
 				if i < len(PathToTheArray)-1 {
@@ -333,7 +351,11 @@ func (s *SyJson) GetData(path string) string {
 			if !_IsMap(data) {
 				return ""
 			}
-			data = data.(map[string]interface{})[PathToTheArray[i]]
+			mm, o := data.(map[string]interface{})
+			if o {
+				data = mm[PathToTheArray[i]]
+			}
+
 		}
 	}
 	if _DataIsArray(data) {
@@ -361,8 +383,8 @@ func (s *SyJson) GetData(path string) string {
 			default:
 				break
 			}
-			obj := data.([]interface{})
-			if obj == nil {
+			obj, o := data.([]interface{})
+			if obj == nil || !o {
 				return ""
 			}
 			if ind < 0 || ind >= len(obj) {
@@ -379,16 +401,16 @@ func (s *SyJson) GetData(path string) string {
 	if !_IsMap(data) {
 		return ""
 	}
-	obj := data.(map[string]interface{})
-	if obj == nil {
+	obj, o := data.(map[string]interface{})
+	if obj == nil || !o {
 		return ""
 	}
 	ind = len(PathToTheArray) - 1
 	if ind < 0 || ind >= len(PathToTheArray) {
 		return ""
 	}
-	ss := PathToTheArray[ind]
-	return tostring(obj[ss])
+	ssx := PathToTheArray[ind]
+	return tostring(obj[ssx])
 }
 func (s *SyJson) GetCount(path string) int {
 	return s.GetNum(path)
@@ -398,7 +420,11 @@ func (s *SyJson) GetNum(path string) int {
 
 	PathToTheArray, _ := parsePathArray(path, nil)
 	//先获取顶级
-	data := s._Data.(map[string]interface{})["/"]
+	ss, ok := s._Data.(map[string]interface{})
+	if !ok {
+		return 0
+	}
+	data := ss["/"]
 	GetDtaNum := func(d interface{}) int {
 		switch obj := d.(type) {
 		case []int:
@@ -454,8 +480,8 @@ func (s *SyJson) GetNum(path string) int {
 				default:
 					break
 				}
-				obj := data.([]interface{})
-				if obj == nil {
+				obj, o := data.([]interface{})
+				if obj == nil || !o {
 					return GetDtaNum(obj)
 				}
 				if i < len(PathToTheArray)-1 {
@@ -474,7 +500,10 @@ func (s *SyJson) GetNum(path string) int {
 			if !_IsMap(data) {
 				return 0
 			}
-			data = data.(map[string]interface{})[PathToTheArray[i]]
+			mm, o := data.(map[string]interface{})
+			if o {
+				data = mm[PathToTheArray[i]]
+			}
 		}
 	}
 	if _DataIsArray(data) {
@@ -509,18 +538,17 @@ func (s *SyJson) GetNum(path string) int {
 		return 0
 	}
 	//return GetDtaNum(data.(map[string]interface{})[PathToTheArray[len(PathToTheArray)-1]])
-	obj := data.(map[string]interface{})
-	if obj == nil {
+	obj, o := data.(map[string]interface{})
+	if obj == nil || !o {
 		return 0
 	}
 	ind = len(PathToTheArray) - 1
 	if ind < 0 || ind >= len(PathToTheArray) {
 		return 0
 	}
-	ss := PathToTheArray[ind]
-	return GetDtaNum(obj[ss])
+	sxs := PathToTheArray[ind]
+	return GetDtaNum(obj[sxs])
 }
-
 func _IsArray(interf interface{}) bool {
 	if interf == nil {
 		return false

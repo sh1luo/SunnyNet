@@ -96,6 +96,18 @@ func main() {
 		//设置强制走TCP规则，使用这个函数后 就不要使用 Sunny.MustTcp(true) 否则这个函数无效
 		Sunny.SetMustTcpRegexp("tpstelemetry.tencent.com", true)
 	*/
+	/*
+		//使用驱动抓包 (两个驱动各有特点自行尝试,哪个能用/好用 用哪个)
+		Sunny.OpenDrive(true)  // 使用 NFAPI 驱动
+		Sunny.OpenDrive(false) // 使用 Proxifier 驱动 不支持32位操作系统，不支持UDP数据捕获
+
+		Sunny.ProcessAddName("gamemon.des") //添加指定进程名称
+		Sunny.ProcessDelName("gamemon.des") //删除已添加的指定进程名称
+		Sunny.ProcessAddPid(1122)		    //添加指定进程PID
+		Sunny.ProcessDelPid(1122)		    //删除已添加的指定进程PID
+		Sunny.ProcessCancelAll()			//删除已添加的所有进程名称/PID
+		Sunny.ProcessALLName(true, false)	//捕获全部进程开始后，添加进程名称-PID无效
+	*/
 	//设置回调地址
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
 	Port := 2025

@@ -90,7 +90,7 @@ func (h *httpConn) SetHTTP2Config(h2Config string) bool {
 		h._request.SetHTTP2Config(nil)
 		return false
 	}
-	h._tls.NextProtos = []string{http.H11Proto, http.H2Proto}
+	h._tls.NextProtos = public.HTTP2NextProtos
 	if h2Config != "" {
 		c, e := http.StringToH2Config(h2Config)
 		if e != nil {

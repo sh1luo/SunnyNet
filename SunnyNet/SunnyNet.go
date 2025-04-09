@@ -1037,7 +1037,7 @@ func (s *proxyRequest) https() {
 	var serverName string
 	var tlsConn *tls.Conn
 	var HelloMsg *tls.ClientHelloMsg
-	tlsConfig := &tls.Config{MaxVersion: tls.VersionTLS13, NextProtos: []string{http.H2Proto, http.H11Proto}, InsecureSkipVerify: true}
+	tlsConfig := &tls.Config{MaxVersion: tls.VersionTLS13, NextProtos: public.HTTP2NextProtos, InsecureSkipVerify: true}
 	var hook bytes.Buffer
 	s.RwObj.Hook = &hook
 	tlsConn = tls.Server(s.RwObj, tlsConfig)
@@ -1072,9 +1072,9 @@ func (s *proxyRequest) https() {
 				return
 			}
 			if res == whoisHTTPS1 {
-				tlsConfig.NextProtos = []string{http.H11Proto}
+				tlsConfig.NextProtos = public.HTTP1NextProtos
 			} else { //res == whoisHTTPS2
-				tlsConfig.NextProtos = []string{http.H2Proto, http.H11Proto}
+				tlsConfig.NextProtos = public.HTTP2NextProtos
 			}
 			name := ""
 			if serverName != "" {
@@ -1653,7 +1653,7 @@ func (s *proxyRequest) CompleteRequest(req *http.Request) {
 			if len(tv) > 0 {
 				s.TlsConfig.CipherSuites = tv
 			}
-			s.TlsConfig.NextProtos = []string{http.H11Proto, http.H2Proto}
+			s.TlsConfig.NextProtos = public.HTTP2NextProtos
 		}
 	}
 	{

@@ -10,6 +10,7 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -131,7 +132,6 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 					res.URL.Host = res.Host
 				}
 			}
-
 			p := res.URL.Port()
 			if (p == "443" && res.URL.Scheme == "https") || (p == "80" && res.URL.Scheme == "http") {
 				host, _, _ := net.SplitHostPort(res.Host)
@@ -142,7 +142,20 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 					res.URL.Host = res.Host
 				}
 			}
-
+			_p, _ := strconv.Atoi(res.URL.Port())
+			if _p != int(r.Target.Port) {
+				if !((_p != 443 && r.Target.Port == 443) || (_p != 80 && r.Target.Port == 80)) {
+					res.URL.Host = r.Target.String()
+					u, _ := url.Parse(res.URL.String())
+					if u != nil {
+						res.URL = u
+						res.Host = u.Host
+						if res.Header.Get("host") != "" {
+							res.Header.Set("host", u.Host)
+						}
+					}
+				}
+			}
 			ip := net.ParseIP(res.Host)
 			if ip4 := ip.To4(); ip4 == nil && len(ip) == net.IPv6len {
 				res.URL.Host = "[" + res.Host + "]"
@@ -169,18 +182,6 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 		res.Header = reHeader
 	}
 	Target.Parse(r.Target.String(), 0)
-	/*
-		o := res.Header.GetArray("Sec-WebSocket-Extensions")
-		if len(o) > 0 {
-			var arr []string
-			for _, v := range o {
-				if !strings.EqualFold(v, "permessage-deflate") {
-					arr = append(arr, v)
-				}
-			}
-			res.Header.SetArray("Sec-WebSocket-Extensions", arr)
-		}
-	*/
 	r.sendHttp(res)
 }
 

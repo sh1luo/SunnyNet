@@ -48,7 +48,7 @@ func LoadHTTPClient(Context int) *request {
 func CreateHTTPClient() int {
 	Context := newMessageId()
 	HTTPMapLock.Lock()
-	HTTPMap[Context] = &request{req: &http.Request{}, tlsConfig: &tls.Config{NextProtos: []string{http.H11Proto, http.H2Proto}}}
+	HTTPMap[Context] = &request{req: &http.Request{}, tlsConfig: &tls.Config{NextProtos: public.HTTP2NextProtos}}
 	HTTPMapLock.Unlock()
 	return Context
 }
@@ -374,7 +374,7 @@ func HTTPSetCertManager(Context, CertManagerContext int) bool {
 		return false
 	}
 	k.tlsConfig = c.Tls
-	k.tlsConfig.NextProtos = []string{http.H11Proto, http.H2Proto}
+	k.tlsConfig.NextProtos = public.HTTP2NextProtos
 	return true
 }
 

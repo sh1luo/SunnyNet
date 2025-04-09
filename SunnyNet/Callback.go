@@ -127,7 +127,6 @@ func (s *proxyRequest) CallbackBeforeRequest() {
 			_ = s.Response.Body.Close()
 		}
 	}
-
 	pid, _ := strconv.Atoi(s.Pid)
 	s.Response.Response = nil
 	defer func() {
@@ -171,6 +170,7 @@ func (s *proxyRequest) CallbackBeforeRequest() {
 		_serverIP:   s.Response.ServerIP,
 	}
 	s.Global.scriptHTTPCall(m)
+	s.TlsConfig = m._tls
 	s.Response.Response = m._response
 	s._Display = m._Display
 	if m._proxy != nil {
