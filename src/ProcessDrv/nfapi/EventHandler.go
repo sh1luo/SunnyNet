@@ -9,6 +9,7 @@ import (
 	. "github.com/qtgolang/SunnyNet/src/ProcessDrv/Info"
 	net2 "github.com/qtgolang/SunnyNet/src/iphlpapi/net"
 	"github.com/qtgolang/SunnyNet/src/public"
+	"github.com/shirou/gopsutil/process"
 	"net"
 	"regexp"
 	"strconv"
@@ -96,9 +97,20 @@ func tcpConnectRequest(id uint64, pConnInfo *NF_TCP_CONN_INFO) {
 	if pConnInfo.ProcessId.Get() == uint32(ExePid) {
 		return
 	}
-
 	// 获取进程名，并检查是否在代理名单中
 	_, _, ProcessName := Api.NfgetProcessNameA(pConnInfo.ProcessId.Get())
+	if ProcessName == "" {
+		_pid := int32(pConnInfo.ProcessId.Get())
+		arr, e := process.Processes()
+		if e == nil {
+			for _, v := range arr {
+				if v.Pid == _pid {
+					ProcessName, _ = v.Name()
+					break
+				}
+			}
+		}
+	}
 	Lock.Lock()
 	if HookProcess == false {
 		if Name[strings.ToLower(ProcessName)] == false {
