@@ -79,7 +79,18 @@ func (s *proxyRequest) CallbackTCPRequest(callType int, _msg *public.TcpMsg, Rem
 		delete(httpStorage, MessageId)
 		messageIdLock.Unlock()
 	}()
-	Ams := &tcpConn{c: _msg, messageId: MessageId, _type: callType, theology: s.Theology, localAddr: LocalAddr, remoteAddr: hostname, pid: pid, sunnyContext: s.Global.SunnyContext, _Display: true}
+	Ams := &tcpConn{
+		c:                _msg,
+		messageId:        MessageId,
+		_type:            callType,
+		theology:         s.Theology,
+		localAddr:        LocalAddr,
+		remoteAddr:       hostname,
+		pid:              pid,
+		sunnyContext:     s.Global.SunnyContext,
+		_Display:         true,
+		_OutRouterIPFunc: s.SetOutRouterIP,
+	}
 	s.Global.scriptTCPCall(Ams)
 	if !Ams._Display {
 		return
@@ -153,21 +164,23 @@ func (s *proxyRequest) CallbackBeforeRequest() {
 	}()
 
 	m := &httpConn{
-		_Theology:   s.Theology,
-		_getRawBody: s.RawRequestDataToFile,
-		_MessageId:  MessageId,
-		_PID:        pid,
-		_Context:    s.Global.SunnyContext,
-		_Type:       public.HttpSendRequest,
-		_request:    s.Request,
-		_response:   s.Response.Response,
-		_err:        "",
-		_proxy:      s.Proxy,
-		_ClientIP:   s.Conn.RemoteAddr().String(),
-		_Display:    true,
-		_Break:      false,
-		_tls:        s.TlsConfig,
-		_serverIP:   s.Response.ServerIP,
+		_Theology:        s.Theology,
+		_getRawBody:      s.RawRequestDataToFile,
+		_MessageId:       MessageId,
+		_PID:             pid,
+		_Context:         s.Global.SunnyContext,
+		_Type:            public.HttpSendRequest,
+		_request:         s.Request,
+		_response:        s.Response.Response,
+		_err:             "",
+		_proxy:           s.Proxy,
+		_ClientIP:        s.Conn.RemoteAddr().String(),
+		_Display:         true,
+		_Break:           false,
+		_tls:             s.TlsConfig,
+		_serverIP:        s.Response.ServerIP,
+		_localAddress:    s.Conn.LocalAddr().String(),
+		_OutRouterIPFunc: s.SetOutRouterIP,
 	}
 	s.Global.scriptHTTPCall(m)
 	s.TlsConfig = m._tls
@@ -220,20 +233,22 @@ func (s *proxyRequest) CallbackBeforeResponse() {
 	}()
 
 	m := &httpConn{
-		_Theology:   s.Theology,
-		_getRawBody: s.RawRequestDataToFile,
-		_MessageId:  MessageId,
-		_PID:        pid,
-		_Context:    s.Global.SunnyContext,
-		_Type:       public.HttpResponseOK,
-		_request:    s.Request,
-		_response:   s.Response.Response,
-		_err:        "",
-		_ClientIP:   s.Conn.RemoteAddr().String(),
-		_Display:    true,
-		_Break:      false,
-		_tls:        s.TlsConfig,
-		_serverIP:   s.Response.ServerIP,
+		_Theology:        s.Theology,
+		_getRawBody:      s.RawRequestDataToFile,
+		_MessageId:       MessageId,
+		_PID:             pid,
+		_Context:         s.Global.SunnyContext,
+		_Type:            public.HttpResponseOK,
+		_request:         s.Request,
+		_response:        s.Response.Response,
+		_err:             "",
+		_ClientIP:        s.Conn.RemoteAddr().String(),
+		_Display:         true,
+		_Break:           false,
+		_tls:             s.TlsConfig,
+		_serverIP:        s.Response.ServerIP,
+		_localAddress:    s.Conn.LocalAddr().String(),
+		_OutRouterIPFunc: s.SetOutRouterIP,
 	}
 	s.Global.scriptHTTPCall(m)
 	s.Response.Response = m._response
@@ -322,18 +337,20 @@ func (s *proxyRequest) CallbackError(err string) {
 		messageIdLock.Unlock()
 	}()
 	m := &httpConn{
-		_Theology:   s.Theology,
-		_getRawBody: s.RawRequestDataToFile,
-		_MessageId:  NewMessageId(),
-		_PID:        pid,
-		_Context:    s.Global.SunnyContext,
-		_Type:       public.HttpRequestFail,
-		_request:    s.Request,
-		_response:   nil,
-		_err:        err,
-		_ClientIP:   s.Conn.RemoteAddr().String(),
-		_tls:        nil,
-		_serverIP:   s.Response.ServerIP,
+		_Theology:        s.Theology,
+		_getRawBody:      s.RawRequestDataToFile,
+		_MessageId:       NewMessageId(),
+		_PID:             pid,
+		_Context:         s.Global.SunnyContext,
+		_Type:            public.HttpRequestFail,
+		_request:         s.Request,
+		_response:        nil,
+		_err:             err,
+		_ClientIP:        s.Conn.RemoteAddr().String(),
+		_tls:             nil,
+		_serverIP:        s.Response.ServerIP,
+		_localAddress:    s.Conn.LocalAddr().String(),
+		_OutRouterIPFunc: s.SetOutRouterIP,
 	}
 	s.Global.scriptHTTPCall(m)
 	if s._Display == false {
@@ -361,7 +378,20 @@ func (s *proxyRequest) CallbackWssRequest(State int, Method, Url string, msg *pu
 		return
 	}
 	pid, _ := strconv.Atoi(s.Pid)
-	m := &wsConn{_Method: Method, Pid: pid, _Type: State, SunnyContext: s.Global.SunnyContext, Url: Url, c: msg, _MessageId: MessageId, _Theology: s.Theology, Request: s.Request, _ClientIP: s.Conn.RemoteAddr().String(), _Display: true}
+	m := &wsConn{
+		_Method:       Method,
+		Pid:           pid,
+		_Type:         State,
+		SunnyContext:  s.Global.SunnyContext,
+		Url:           Url,
+		c:             msg,
+		_MessageId:    MessageId,
+		_Theology:     s.Theology,
+		Request:       s.Request,
+		_ClientIP:     s.Conn.RemoteAddr().String(),
+		_localAddress: s.Conn.LocalAddr().String(),
+		_Display:      true,
+	}
 	s.Global.scriptWebsocketCall(m)
 	if !s._Display {
 		return

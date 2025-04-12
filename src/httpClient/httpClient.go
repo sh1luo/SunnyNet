@@ -147,22 +147,36 @@ func do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, c
 
 var httpCancel = errors.New("客户端取消请求")
 var httpLock sync.Mutex
-var httpClientMap map[string]clientList
+var httpClientMap map[uint32]clientList
 
 type clientList map[uintptr]*clientPart
 
+func hashCode(s string) uint32 {
+	var hash int32 = 0
+	for _, ch := range s {
+		hash = 31*hash + ch
+	}
+	return uint32(hash)
+}
 func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, timeout time.Duration) *clientPart {
 	httpLock.Lock()
 	defer httpLock.Unlock()
+	outRouterIP, _ := req.Context().Value(public.OutRouterIPKey).(*net.TCPAddr)
 	s := ""
+	if outRouterIP != nil {
+		s += outRouterIP.String() + "|"
+	} else {
+		s += "|"
+	}
 	if req != nil && req.URL != nil {
-		s = req.URL.Host + "|" + req.Proto + "|" + req.URL.Scheme
+		s += req.URL.Host + "|" + req.Proto + "|" + req.URL.Scheme
 	}
 	s += "|" + Proxy.String() + "|"
 	if cfg != nil {
 		s += strings.Join(cfg.NextProtos, "-")
 	}
-	if clients, ok := httpClientMap[s]; ok {
+	hash := hashCode(s)
+	if clients, ok := httpClientMap[hash]; ok {
 		if len(clients) > 0 {
 			for key, client := range clients {
 				delete(clients, key)
@@ -243,7 +257,7 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 	var ips []net.IP
 	var isLookupIP bool
 	var ProxyHost string
-	var LookupIPdial func(network string, addr string) (net.Conn, error)
+	var LookupIPdial func(network string, addr string, OutRouterIP *net.TCPAddr) (net.Conn, error)
 	var nproxy *SunnyProxy.Proxy
 	var LookupIPproxy *SunnyProxy.Proxy
 	if Proxy != nil {
@@ -256,7 +270,10 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 		LookupIPdial = LookupIPproxy.Dial
 	}
 	cc := http.Client{Transport: Tr, Timeout: timeout}
-	res := &clientPart{Client: cc, s: s, RequestProxy: nproxy, Transport: Tr, h2: h2}
+	res := &clientPart{Client: cc, key: hash, RequestProxy: nproxy, Transport: Tr, h2: h2}
+	if outRouterIP != nil {
+		res.outRouterIP = &net.TCPAddr{IP: outRouterIP.IP}
+	}
 	Tr.DialContext = func(ctx context.Context, network, addr string) (cnn net.Conn, _ error) {
 		defer func() {
 			if cnn != nil && timeout == 0 {
@@ -278,7 +295,7 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 				if err2 == nil {
 					ip := net.ParseIP(address2)
 					if ip != nil {
-						conn, er := res.RequestProxy.DialWithTimeout(network, _serverIP_, 3*time.Second)
+						conn, er := res.RequestProxy.DialWithTimeout(network, _serverIP_, 3*time.Second, res.outRouterIP)
 						if conn != nil {
 							return conn, er
 						}
@@ -294,12 +311,12 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 		i := net.ParseIP(address)
 		if i != nil {
 			if len(i) == net.IPv4len {
-				return res.RequestProxy.Dial(network, i.String()+":"+port)
+				return res.RequestProxy.Dial(network, i.String()+":"+port, res.outRouterIP)
 			}
-			return res.RequestProxy.Dial(network, fmt.Sprintf("[%s]:%s", address, port))
+			return res.RequestProxy.Dial(network, fmt.Sprintf("[%s]:%s", address, port), res.outRouterIP)
 		}
 		if strings.ToLower(address) == "localhost" {
-			return res.RequestProxy.Dial(network, "127.0.0.1:"+port)
+			return res.RequestProxy.Dial(network, "127.0.0.1:"+port, res.outRouterIP)
 		}
 
 		var retries bool
@@ -309,12 +326,12 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 				first := dns.GetFirstIP(address, ProxyHost)
 				if first != nil {
 					if first.To4() != nil {
-						return res.RequestProxy.Dial(network, fmt.Sprintf("%s:%s", first.String(), port))
+						return res.RequestProxy.Dial(network, fmt.Sprintf("%s:%s", first.String(), port), res.outRouterIP)
 					} else {
-						return res.RequestProxy.Dial(network, fmt.Sprintf("[%s]:%s", first.String(), port))
+						return res.RequestProxy.Dial(network, fmt.Sprintf("[%s]:%s", first.String(), port), res.outRouterIP)
 					}
 				}
-				ips, _ = dns.LookupIP(address, ProxyHost, LookupIPdial)
+				ips, _ = dns.LookupIP(address, ProxyHost, res.outRouterIP, LookupIPdial)
 				if len(ips) < 1 {
 					return nil, noIP
 				}
@@ -341,14 +358,14 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 			ip := extractAndRemoveIP(&ips)
 			if ip != nil && ip.String() != "127.0.0.1" {
 				if ip.To4() != nil {
-					conn, er := res.RequestProxy.DialWithTimeout(network, fmt.Sprintf("%s:%s", ip.String(), port), 2*time.Second)
+					conn, er := res.RequestProxy.DialWithTimeout(network, fmt.Sprintf("%s:%s", ip.String(), port), 2*time.Second, res.outRouterIP)
 					if conn != nil {
 						dns.SetFirstIP(address, ProxyHost, ip)
 						return conn, er
 					}
 					continue
 				}
-				conn, er := res.RequestProxy.DialWithTimeout(network, fmt.Sprintf("[%s]:%s", ip.String(), port), 2*time.Second)
+				conn, er := res.RequestProxy.DialWithTimeout(network, fmt.Sprintf("[%s]:%s", ip.String(), port), 2*time.Second, res.outRouterIP)
 				if conn != nil {
 					dns.SetFirstIP(address, ProxyHost, ip)
 					return conn, er
@@ -400,24 +417,25 @@ func configureHTTP2Transport(Tr *http.Transport, cfg *tls.Config) {
 type clientPart struct {
 	Client       http.Client
 	time         time.Time
-	s            string
+	key          uint32
 	Conn         *net.Conn
 	Transport    *http.Transport
 	RequestProxy *SunnyProxy.Proxy
 	h2           bool
+	outRouterIP  *net.TCPAddr
 }
 
 func httpClientPop(client *clientPart) {
-	if client == nil || client.s == "" {
+	if client == nil || client.key == 0 {
 		return
 	}
 	httpLock.Lock()
 	defer httpLock.Unlock()
 	client.time = time.Now()
-	clients := httpClientMap[client.s]
+	clients := httpClientMap[client.key]
 	if clients == nil {
-		httpClientMap[client.s] = make(clientList)
-		clients = httpClientMap[client.s]
+		httpClientMap[client.key] = make(clientList)
+		clients = httpClientMap[client.key]
 	}
 	clients[uintptr(unsafe.Pointer(client))] = client
 }
@@ -438,7 +456,7 @@ func httpClientClear() {
 	}
 }
 func init() {
-	httpClientMap = make(map[string]clientList)
+	httpClientMap = make(map[uint32]clientList)
 	go func() {
 		for {
 			time.Sleep(time.Second * 3)

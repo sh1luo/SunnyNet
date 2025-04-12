@@ -279,11 +279,34 @@ type Conn struct {
 
 	readDecompress         bool // whether last read frame had RSV1 set
 	newDecompressionReader func(io.Reader, []byte) io.ReadCloser
-	window                 bool
-	window_bytes           bytes.Buffer
-	Window_Size_Max        int
+	WindowReader           window
+}
+type window struct {
+	window_bytes    bytes.Buffer
+	Window_Size_Max int
 }
 
+func (w *window) UpdateWindow(data []byte) {
+	newDataLength := len(data)
+	// 如果新数据长度超过最大窗口大小
+	if newDataLength >= w.Window_Size_Max {
+		w.window_bytes.Reset()
+		w.window_bytes.Write(data[newDataLength-w.Window_Size_Max:])
+		return
+	}
+	totalLen := w.window_bytes.Len() + newDataLength
+	// 如果总长度超过最大窗口大小
+	if totalLen > w.Window_Size_Max {
+		//正常情况下 overflow 不可能大于  c.window_bytes.Len()
+		//如果 overflow 大于 c.window_bytes.Len()
+		overflow := totalLen - w.Window_Size_Max
+		newData := w.window_bytes.Bytes()[overflow:]
+		w.window_bytes.Reset()
+		w.window_bytes.Write(newData)
+	}
+	// 写入新数据
+	w.window_bytes.Write(data) // 将新数据写入缓存
+}
 func newConn(conn net.Conn, isServer bool, readBufferSize, writeBufferSize int, writeBufferPool BufferPool, br *bufio.Reader, writeBuf []byte) *Conn {
 
 	if br == nil {
@@ -334,12 +357,6 @@ func (c *Conn) setReadRemaining(n int64) error {
 
 	c.readRemaining = n
 	return nil
-}
-func (c *Conn) SetWindow(n bool) {
-	c.window = n
-	c.window_bytes.Reset()
-	c.newCompressionWriter = compressNoContextTakeover
-	c.newDecompressionReader = decompressNoContextTakeover2
 }
 
 // Subprotocol returns the negotiated protocol for the connection.
@@ -763,7 +780,6 @@ func (c *Conn) WritePreparedMessage(pm *PreparedMessage) error {
 func (c *Conn) WriteMessage(messageType int, data []byte) error {
 	if c.isServer && (c.newCompressionWriter == nil || !c.enableWriteCompression) {
 		// Fast path with no allocations and single frame.
-
 		var mw messageWriter
 		if err := c.beginMessage(&mw, messageType); err != nil {
 			return err
@@ -781,6 +797,7 @@ func (c *Conn) WriteMessage(messageType int, data []byte) error {
 	if _, err = w.Write(data); err != nil {
 		return err
 	}
+	//c.Window.Writer.UpdateWindow(data)
 	return w.Close()
 }
 func (c *Conn) WriteFullMessage(messageType int, data []byte) error {
@@ -1090,30 +1107,9 @@ func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
 	if err != nil {
 		return messageType, nil, err
 	}
-
 	if c.readDecompress {
-		i, _ := io.ReadAll(c.newDecompressionReader(c.reader, c.window_bytes.Bytes()))
-		if c.window {
-			newDataLength := len(i)
-			// 如果新数据长度超过最大窗口大小
-			if newDataLength >= c.Window_Size_Max {
-				c.window_bytes.Reset()
-				c.window_bytes.Write(i[newDataLength-c.Window_Size_Max:]) // 只保留新数据的最后部分
-				return messageType, i, nil
-			}
-			totalLen := c.window_bytes.Len() + newDataLength
-			// 如果总长度超过最大窗口大小
-			if totalLen > c.Window_Size_Max {
-				//正常情况下 overflow 不可能大于  c.window_bytes.Len()
-				//如果 overflow 大于 c.window_bytes.Len()
-				overflow := totalLen - c.Window_Size_Max
-				newData := c.window_bytes.Bytes()[overflow:]
-				c.window_bytes.Reset()
-				c.window_bytes.Write(newData)
-			}
-			// 写入新数据
-			c.window_bytes.Write(i) // 将新数据写入缓存
-		}
+		i, _ := io.ReadAll(c.newDecompressionReader(c.reader, c.WindowReader.window_bytes.Bytes()))
+		c.WindowReader.UpdateWindow(i)
 		return messageType, i, nil
 	}
 	p, err = io.ReadAll(r)

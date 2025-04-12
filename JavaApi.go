@@ -1467,10 +1467,10 @@ func Java_com_SunnyNet_api_SocketClientReceive(envObj uintptr, clazz uintptr, Co
 Java_com_SunnyNet_api_SocketClientDial TCP客户端 连接
 */
 //export Java_com_SunnyNet_api_SocketClientDial
-func Java_com_SunnyNet_api_SocketClientDial(envObj uintptr, clazz uintptr, Context int64, addr uintptr, call uintptr, isTls, synchronous bool, ProxyUrl uintptr, CertificateContext int64, OutTime int64) bool {
+func Java_com_SunnyNet_api_SocketClientDial(envObj uintptr, clazz uintptr, Context int64, addr uintptr, call uintptr, isTls, synchronous bool, ProxyUrl uintptr, CertificateContext int64, OutTime int64, OutRouterIP uintptr) bool {
 	env := Env(envObj)
 	if synchronous {
-		return Api.SocketClientDial(int(Context), env.GetString(addr), 0, nil, isTls, true, env.GetString(ProxyUrl), int(CertificateContext), int(OutTime))
+		return Api.SocketClientDial(int(Context), env.GetString(addr), 0, nil, isTls, true, env.GetString(ProxyUrl), int(CertificateContext), int(OutTime), env.GetString(OutRouterIP))
 	}
 	obj := env.NewGlobalRef(call)
 	cls := env.GetObjectClass(obj)
@@ -1490,8 +1490,7 @@ func Java_com_SunnyNet_api_SocketClientDial(envObj uintptr, clazz uintptr, Conte
 		_env.DeleteLocalRef(Jobject(_obj))
 	}
 	Java_GlobalRef_Add("SocketClient", obj, int(Context))
-
-	return Api.SocketClientDial(int(Context), env.GetString(addr), 0, f, isTls, false, env.GetString(ProxyUrl), int(CertificateContext), int(OutTime))
+	return Api.SocketClientDial(int(Context), env.GetString(addr), 0, f, isTls, false, env.GetString(ProxyUrl), int(CertificateContext), int(OutTime), env.GetString(OutRouterIP))
 }
 
 /*
@@ -1615,7 +1614,7 @@ func Java_com_SunnyNet_api_WebsocketHeartbeat(envObj uintptr, clazz uintptr, Con
 Java_com_SunnyNet_api_WebsocketDial Websocket客户端 连接
 */
 //export Java_com_SunnyNet_api_WebsocketDial
-func Java_com_SunnyNet_api_WebsocketDial(envObj uintptr, clazz uintptr, Context int64, URL, Heads uintptr, call uintptr, synchronous bool, ProxyUrl uintptr, CertificateConText, outTime int64) bool {
+func Java_com_SunnyNet_api_WebsocketDial(envObj uintptr, clazz uintptr, Context int64, URL, Heads uintptr, call uintptr, synchronous bool, ProxyUrl uintptr, CertificateConText, outTime int64, OutRouterIP uintptr) bool {
 	env := Env(envObj)
 	if !synchronous {
 		obj := env.NewGlobalRef(call)
@@ -1637,9 +1636,9 @@ func Java_com_SunnyNet_api_WebsocketDial(envObj uintptr, clazz uintptr, Context 
 			return
 		}
 		Java_GlobalRef_Add("websocket", obj, int(Context))
-		return Api.WebsocketDial(int(Context), env.GetString(URL), env.GetString(Heads), 0, f, false, env.GetString(ProxyUrl), int(CertificateConText), int(outTime))
+		return Api.WebsocketDial(int(Context), env.GetString(URL), env.GetString(Heads), 0, f, false, env.GetString(ProxyUrl), int(CertificateConText), int(outTime), env.GetString(OutRouterIP))
 	}
-	return Api.WebsocketDial(int(Context), env.GetString(URL), env.GetString(Heads), 0, nil, true, env.GetString(ProxyUrl), int(CertificateConText), int(outTime))
+	return Api.WebsocketDial(int(Context), env.GetString(URL), env.GetString(Heads), 0, nil, true, env.GetString(ProxyUrl), int(CertificateConText), int(outTime), env.GetString(OutRouterIP))
 }
 
 /*
@@ -1999,6 +1998,33 @@ Java_com_SunnyNet_api_SetDnsServer Dns解析服务器 默认:223.5.5.5:853
 func Java_com_SunnyNet_api_SetDnsServer(envObj uintptr, clazz uintptr, ServerName uintptr) {
 	env := Env(envObj)
 	dns.SetDnsServer(env.GetString(ServerName))
+}
+
+/*
+Java_com_SunnyNet_api_SetOutRouterIP 设置数据出口IP 请传入网卡对应的IP地址,用于指定网卡,例如 192.168.31.11（全局）
+*/
+//export Java_com_SunnyNet_api_SetOutRouterIP
+func Java_com_SunnyNet_api_SetOutRouterIP(envObj uintptr, clazz uintptr, SunnyContext int64, value uintptr) bool {
+	env := Env(envObj)
+	return Api.SetOutRouterIP(int(SunnyContext), env.GetString(value))
+}
+
+/*
+Java_com_SunnyNet_api_RequestSetOutRouterIP 设置数据出口IP 请传入网卡对应的IP地址,用于指定网卡,例如 192.168.31.11（TCP/HTTP请求共用这个函数）
+*/
+//export Java_com_SunnyNet_api_RequestSetOutRouterIP
+func Java_com_SunnyNet_api_RequestSetOutRouterIP(envObj uintptr, clazz uintptr, MessageId int64, value uintptr) bool {
+	env := Env(envObj)
+	return Api.RequestSetOutRouterIP(int(MessageId), env.GetString(value))
+}
+
+/*
+Java_com_SunnyNet_api_HTTPSetOutRouterIP 设置数据出口IP 请传入网卡对应的IP地址,用于指定网卡,例如 192.168.31.11（TCP/HTTP请求共用这个函数）
+*/
+//export Java_com_SunnyNet_api_HTTPSetOutRouterIP
+func Java_com_SunnyNet_api_HTTPSetOutRouterIP(envObj uintptr, clazz uintptr, MessageId int64, value uintptr) bool {
+	env := Env(envObj)
+	return Api.HTTPSetOutRouterIP(int(MessageId), env.GetString(value))
 }
 
 type _GlobalRef struct {

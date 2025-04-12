@@ -1373,8 +1373,8 @@ func SocketClientReceive(Context, OutTimes int) uintptr {
 SocketClientDial TCP客户端 连接
 */
 //export SocketClientDial
-func SocketClientDial(Context int, addr *C.char, call int, isTls, synchronous bool, ProxyUrl *C.char, CertificateConText int, OutTime int) bool {
-	return Api.SocketClientDial(Context, C.GoString(addr), call, nil, isTls, synchronous, C.GoString(ProxyUrl), CertificateConText, OutTime)
+func SocketClientDial(Context int, addr *C.char, call int, isTls, synchronous bool, ProxyUrl *C.char, CertificateConText int, OutTime int, OutRouterIP *C.char) bool {
+	return Api.SocketClientDial(Context, C.GoString(addr), call, nil, isTls, synchronous, C.GoString(ProxyUrl), CertificateConText, OutTime, C.GoString(OutRouterIP))
 }
 
 /*
@@ -1451,8 +1451,8 @@ func WebsocketHeartbeat(Context, HeartbeatTime, call int) {
 WebsocketDial Websocket客户端 连接
 */
 //export WebsocketDial
-func WebsocketDial(Context int, URL, Heads *C.char, call int, synchronous bool, ProxyUrl *C.char, CertificateConText, outTime int) bool {
-	return Api.WebsocketDial(Context, C.GoString(URL), C.GoString(Heads), call, nil, synchronous, C.GoString(ProxyUrl), CertificateConText, outTime)
+func WebsocketDial(Context int, URL, Heads *C.char, call int, synchronous bool, ProxyUrl *C.char, CertificateConText, outTime int, OutRouterIP *C.char) bool {
+	return Api.WebsocketDial(Context, C.GoString(URL), C.GoString(Heads), call, nil, synchronous, C.GoString(ProxyUrl), CertificateConText, outTime, C.GoString(OutRouterIP))
 }
 
 /*
@@ -1750,4 +1750,29 @@ SetDnsServer Dns解析服务器 默认:223.5.5.5:853
 //export SetDnsServer
 func SetDnsServer(ServerName *C.char) {
 	dns.SetDnsServer(C.GoString(ServerName))
+}
+
+/*
+SetOutRouterIP 设置数据出口IP 请传入网卡对应的IP地址,用于指定网卡,例如 192.168.31.11（全局）
+*/
+//export SetOutRouterIP
+func SetOutRouterIP(SunnyContext int, value *C.char) bool {
+	return Api.SetOutRouterIP(SunnyContext, C.GoString(value))
+}
+
+/*
+RequestSetOutRouterIP 设置数据出口IP 请传入网卡对应的IP地址,用于指定网卡,例如 192.168.31.11（TCP/HTTP请求共用这个函数）
+*/
+//export RequestSetOutRouterIP
+func RequestSetOutRouterIP(MessageId int, value *C.char) bool {
+	return Api.RequestSetOutRouterIP(MessageId, C.GoString(value))
+}
+
+/*
+HTTPSetOutRouterIP
+HTTP 客户端 设置数据出口IP 请传入网卡对应的IP地址,用于指定网卡,例如 192.168.31.11（TCP/HTTP请求共用这个函数）
+*/
+//export HTTPSetOutRouterIP
+func HTTPSetOutRouterIP(Context int, value *C.char) bool {
+	return Api.HTTPSetOutRouterIP(Context, C.GoString(value))
 }

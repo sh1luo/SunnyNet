@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const SunnyVersion = "2025-04-10"
+const SunnyVersion = "2025-04-13"
 const Information = `
 ------------------------------------------------------
        欢迎使用 SunnyNet 网络中间件 - V` + SunnyVersion + `   
@@ -100,6 +100,7 @@ const (
 	SunnyNetRawBodySaveFilePath  = http.SunnyNetRawBodySaveFilePath
 	Connect_Raw_Address          = "_connect_address_" //连接原始地址
 	HTTPClientTags               = "SunnyNetHTTPClient"
+	OutRouterIPKey               = "_OutRouterIPKey_"
 	SunnyNetServerIpTags         = websocket.SunnyNetServerIpTags
 )
 

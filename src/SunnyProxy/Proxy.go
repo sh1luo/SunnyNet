@@ -135,7 +135,7 @@ func (p *Proxy) getSocksAuth() *proxy.Auth {
 		Password: p.Pass(),
 	}
 }
-func (p *Proxy) DialWithTimeout(network, addr string, Timeout time.Duration) (net.Conn, error) {
+func (p *Proxy) DialWithTimeout(network, addr string, Timeout time.Duration, OutRouterIP *net.TCPAddr) (net.Conn, error) {
 	pp := p.Clone()
 	if pp == nil {
 		pp = &Proxy{}
@@ -146,10 +146,10 @@ func (p *Proxy) DialWithTimeout(network, addr string, Timeout time.Duration) (ne
 		}
 	}()
 	pp.timeout = Timeout
-	return pp.Dial(network, addr)
+	return pp.Dial(network, addr, OutRouterIP)
 }
-func (p *Proxy) Dial(network, addr string) (net.Conn, error) {
-	var directDialer = direct{timeout: p.getTimeout()}
+func (p *Proxy) Dial(network, addr string, OutRouterIP *net.TCPAddr) (net.Conn, error) {
+	var directDialer = direct{timeout: p.getTimeout(), OutRouterIP: OutRouterIP}
 	addrHost, _, _ := net.SplitHostPort(addr)
 	if p == nil {
 		a, e := directDialer.Dial(network, addr)
@@ -218,7 +218,8 @@ func (p *Proxy) Dial(network, addr string) (net.Conn, error) {
 }
 
 type direct struct {
-	timeout time.Duration
+	timeout     time.Duration
+	OutRouterIP *net.TCPAddr
 }
 
 func (ps direct) Dial(network, addr string) (net.Conn, error) {
@@ -230,6 +231,15 @@ func (ps direct) DialContext(ctx context.Context, network, addr string) (net.Con
 	if m.Timeout < time.Millisecond {
 		m.Timeout = 5 * time.Second
 	}
+	if !strings.Contains(addr, "127.0.0.1") && !strings.Contains(addr, "[::1]") {
+		mip := RouterIPInspect(ps.OutRouterIP)
+		if mip != nil {
+			m.LocalAddr = &net.TCPAddr{
+				IP:   mip,
+				Port: 0,
+			}
+		}
+	}
 	ctx, cancel := context.WithTimeout(ctx, m.Timeout)
 	defer cancel()
 	return m.DialContext(ctx, network, addr)
@@ -239,4 +249,27 @@ func FormatIP(ip net.IP, port string) string {
 		return fmt.Sprintf("%s:%s", ip.String(), port)
 	}
 	return fmt.Sprintf("[%s]:%s", ip.String(), port)
+}
+func RouterIPInspect(addr *net.TCPAddr) net.IP {
+	if addr == nil {
+		return nil
+	}
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil
+	}
+	for _, face := range interfaces {
+		adders, err1 := face.Addrs()
+		if err1 != nil {
+			continue
+		}
+		for _, a := range adders {
+			if aspnet, ok := a.(*net.IPNet); ok {
+				if aspnet.Contains(addr.IP) {
+					return addr.IP
+				}
+			}
+		}
+	}
+	return nil
 }

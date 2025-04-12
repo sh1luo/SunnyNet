@@ -9,6 +9,7 @@ import (
 	"github.com/qtgolang/SunnyNet/src/http"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"github.com/qtgolang/SunnyNet/src/websocket"
+	"net"
 	"net/textproto"
 	"strings"
 	"sync"
@@ -102,7 +103,7 @@ func WebsocketGetErr(Context int) uintptr {
 
 // WebsocketDial
 // Websocket客户端 连接
-func WebsocketDial(Context int, URL, Heads string, call int, goCall func(int, int, []byte, int), synchronous bool, ProxyUrl string, CertificateConText int, outTime int) bool {
+func WebsocketDial(Context int, URL, Heads string, call int, goCall func(int, int, []byte, int), synchronous bool, ProxyUrl string, CertificateConText int, outTime int, OutRouterIP string) bool {
 	w := LoadWebSocketContext(Context)
 	if w == nil {
 		return false
@@ -158,18 +159,25 @@ func WebsocketDial(Context int, URL, Heads string, call int, goCall func(int, in
 	//w.wb, _, w.err = dialer.Dial(Request.URL.String(), Request.Header, Proxy_)
 	//w.wb, _, w.err = dialer.ConnDialContext(Request, Proxy_)
 	var resq *http.Response
-	w.wb, resq, _, w.err = dialer.Dial(URL, Header, Proxy_)
+
+	var outRouterIP *net.TCPAddr
+	_, ip := public.IsLocalIP(OutRouterIP)
+	if ip != nil {
+		if ip.To4() != nil {
+			localAddr, err := net.ResolveTCPAddr("tcp", OutRouterIP+":0")
+			if err == nil {
+				outRouterIP = localAddr
+			}
+		} else {
+			localAddr, err := net.ResolveTCPAddr("tcp", "["+OutRouterIP+"]:0")
+			if err == nil {
+				outRouterIP = localAddr
+			}
+		}
+	}
+	w.wb, resq, _, w.err = dialer.Dial(URL, Header, Proxy_, outRouterIP)
 	if w.err != nil || resq == nil {
 		return false
-	}
-	extensions := websocket.ParseExtensions(resq.Header)
-	for _, ext := range extensions {
-		if ext[""] != "permessage-deflate" {
-			continue
-		}
-		w.wb.Window_Size_Max = 1 << websocket.Get_Client_max_window_bits(resq.Header, extensions)
-		w.wb.SetWindow(true)
-		break
 	}
 	go func() {
 		w.wb.SetCloseHandler(func(code int, text string) error {

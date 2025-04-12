@@ -25,7 +25,7 @@ var (
 	}}
 )
 
-func decompressNoContextTakeover2(r io.Reader, window []byte) io.ReadCloser {
+func decompressNoContextTakeover(r io.Reader, window []byte) io.ReadCloser {
 	const tail =
 	// Add four bytes as specified in RFC
 	"\x00\x00\xff\xff" +
@@ -36,27 +36,16 @@ func decompressNoContextTakeover2(r io.Reader, window []byte) io.ReadCloser {
 	fr.(flate.Resetter).Reset(io.MultiReader(r, strings.NewReader(tail)), window)
 	return &flateReadWrapper{fr}
 }
-
-func decompressNoContextTakeover(r io.Reader) io.ReadCloser {
-	const tail =
-	// Add four bytes as specified in RFC
-	"\x00\x00\xff\xff" +
-		// Add final block to squelch unexpected EOF error from flate reader.
-		"\x01\x00\x00\xff\xff"
-
-	fr, _ := flateReaderPool.Get().(io.ReadCloser)
-	fr.(flate.Resetter).Reset(io.MultiReader(r, strings.NewReader(tail)), nil)
-	return &flateReadWrapper{fr}
-}
-
 func isValidCompressionLevel(level int) bool {
 	return minCompressionLevel <= level && level <= maxCompressionLevel
 }
 
 func compressNoContextTakeover(w io.WriteCloser, level int) io.WriteCloser {
 	p := &flateWriterPools[level-minCompressionLevel]
+
 	tw := &truncWriter{w: w}
 	fw, _ := p.Get().(*flate.Writer)
+
 	if fw == nil {
 		fw, _ = flate.NewWriter(tw, level)
 	} else {

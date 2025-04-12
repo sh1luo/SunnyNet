@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/qtgolang/SunnyNet/src/crypto/tls"
+	"github.com/qtgolang/SunnyNet/src/public"
 	"math/rand"
 	"net"
 	"os"
@@ -28,7 +29,8 @@ const dnsServerLocal = "localhost"
 func init() {
 	go clean()
 }
-func newResolver(proxy string, Dial func(network, address string) (net.Conn, error)) *net.Resolver {
+
+func newResolver(proxy string, outRouterIP *net.TCPAddr, Dial func(network, address string, outRouterIP *net.TCPAddr) (net.Conn, error)) *net.Resolver {
 	var dialer net.Dialer
 	_default_ := &net.Resolver{
 		PreferGo: true,
@@ -44,7 +46,7 @@ func newResolver(proxy string, Dial func(network, address string) (net.Conn, err
 					return dialer.DialContext(context, network_, address)
 				}
 				//使用代理进行查询，代理仅支持TCP
-				return Dial("tcp", address)
+				return Dial("tcp", address, outRouterIP)
 			}
 			_tlsTCP := strings.HasSuffix(_dnsServer, ":853")
 
@@ -53,7 +55,7 @@ func newResolver(proxy string, Dial func(network, address string) (net.Conn, err
 					conn, err = dialer.DialContext(context, network_, _dnsServer)
 				} else {
 					//使用代理连接到自定义DNS服务器，代理仅支持TCP
-					conn, err = Dial("tcp", _dnsServer)
+					conn, err = Dial("tcp", _dnsServer, outRouterIP)
 				}
 				if err != nil {
 					return nil, err
@@ -67,7 +69,7 @@ func newResolver(proxy string, Dial func(network, address string) (net.Conn, err
 				return dialer.DialContext(context, network_, _dnsServer)
 			}
 			//使用代理连接到自定义DNS服务器，代理仅支持TCP
-			return Dial("tcp", _dnsServer)
+			return Dial("tcp", _dnsServer, outRouterIP)
 		},
 	}
 	return _default_
@@ -158,7 +160,7 @@ func deepCopyIPs(src []net.IP) []net.IP {
 	}
 	return dst
 }
-func LookupIP(host string, proxy string, Dial func(network, address string) (net.Conn, error)) ([]net.IP, error) {
+func LookupIP(host string, proxy string, outRouterIP *net.TCPAddr, Dial func(network, address string, outRouterIP *net.TCPAddr) (net.Conn, error)) ([]net.IP, error) {
 	dnsLock.Lock()
 	localDns, _ := GetLocalEntry(host)
 	if localDns != nil {
@@ -173,14 +175,14 @@ func LookupIP(host string, proxy string, Dial func(network, address string) (net
 	}
 	if dnsServer == dnsServerLocal {
 		dnsLock.Unlock()
-		return localLookupIP(host, proxy)
+		return localLookupIP(host, proxy, outRouterIP)
 	}
 	dnsLock.Unlock()
-	ips, err := lookupIP(host, proxy, Dial, "ip4")
+	ips, err := lookupIP(host, proxy, outRouterIP, Dial, "ip4")
 	if len(ips) > 0 {
 		return deepCopyIPs(ips), err
 	}
-	ips, err = lookupIP(host, proxy, Dial, "ip")
+	ips, err = lookupIP(host, proxy, outRouterIP, Dial, "ip")
 	if len(ips) > 0 {
 		return deepCopyIPs(ips), err
 	}
@@ -188,11 +190,11 @@ func LookupIP(host string, proxy string, Dial func(network, address string) (net
 		return deepCopyIPs(ips), err
 	}
 	//如果远程没有解析成功,则使用本地DNS解析一次
-	return localLookupIP(host, proxy)
+	return localLookupIP(host, proxy, outRouterIP)
 }
-func lookupIP(host string, proxy string, Dial func(network, address string) (net.Conn, error), Net string) ([]net.IP, error) {
+func lookupIP(host string, proxy string, outRouterIP *net.TCPAddr, Dial func(network, address string, outRouterIP *net.TCPAddr) (net.Conn, error), Net string) ([]net.IP, error) {
 	if proxy == "" {
-		return localLookupIP(host, proxy)
+		return localLookupIP(host, proxy, outRouterIP)
 	}
 	key := proxy + "|" + host
 	dnsLock.Lock()
@@ -204,7 +206,7 @@ func lookupIP(host string, proxy string, Dial func(network, address string) (net
 	}
 	resolver := dnsTools[proxy]
 	if resolver == nil {
-		t := &tools{rs: newResolver(proxy, Dial)}
+		t := &tools{rs: newResolver(proxy, outRouterIP, Dial)}
 		dnsTools[proxy] = t
 	}
 	resolver = dnsTools[proxy]
@@ -220,7 +222,7 @@ func lookupIP(host string, proxy string, Dial func(network, address string) (net
 	}
 	return _ips, _err
 }
-func localLookupIP(host, proxyHost string) ([]net.IP, error) {
+func localLookupIP(host, proxyHost string, outRouterIP *net.TCPAddr) ([]net.IP, error) {
 	key := ""
 	if proxyHost == "" {
 		key = "_default_" + host
@@ -235,7 +237,32 @@ func localLookupIP(host, proxyHost string) ([]net.IP, error) {
 		return ips.ips, nil
 	}
 	dnsLock.Unlock()
-	_ips, _err := net.LookupIP(host)
+	var _ips []net.IP
+	var _err error
+	mip := public.RouterIPInspect(outRouterIP)
+	if mip != nil {
+		DefaultResolver := &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				var dialer net.Dialer
+				if strings.Contains(network, "tcp") {
+					dialer.LocalAddr = &net.TCPAddr{
+						IP:   mip,
+						Port: 0,
+					}
+				} else {
+					dialer.LocalAddr = &net.UDPAddr{
+						IP:   mip,
+						Port: 0,
+					}
+				}
+				return dialer.Dial(network, address)
+			},
+		}
+		_ips, _err = DefaultResolver.LookupIP(context.Background(), "ip", host)
+	} else {
+		_ips, _err = net.LookupIP(host)
+	}
 	_ips_ := deepCopyIPs(_ips)
 	if len(_ips_) > 0 {
 		t := &rsIps{ips: _ips_, time: time.Now()}

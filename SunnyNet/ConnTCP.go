@@ -10,15 +10,26 @@ import (
 type ConnTCP Interface.ConnTCPCall
 
 type tcpConn struct {
-	sunnyContext int
-	theology     int //唯一ID
-	messageId    int
-	c            *public.TcpMsg //事件消息
-	_type        int            //事件类型_ 例如  public.SunnyNetMsgTypeTCP.....
-	localAddr    string         //本地地址
-	remoteAddr   string         //远程地址
-	pid          int            //Pid
-	_Display     bool
+	sunnyContext     int
+	theology         int //唯一ID
+	messageId        int
+	c                *public.TcpMsg //事件消息
+	_type            int            //事件类型_ 例如  public.SunnyNetMsgTypeTCP.....
+	localAddr        string         //本地地址
+	remoteAddr       string         //远程地址
+	pid              int            //Pid
+	_Display         bool
+	_OutRouterIPFunc func(string) bool
+}
+
+func (k *tcpConn) SetOutRouterIP(way string) bool {
+	if k._type != public.SunnyNetMsgTypeTCPAboutToConnect {
+		return false
+	}
+	if k._OutRouterIPFunc != nil {
+		return k._OutRouterIPFunc(way)
+	}
+	return false
 }
 
 func (k *tcpConn) SetDisplay(Display bool) {

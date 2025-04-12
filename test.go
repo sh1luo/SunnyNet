@@ -69,10 +69,13 @@ func Test() {
 		Sunny.ProcessALLName(true, false)	//捕获全部进程开始后，添加进程名称-PID无效
 	*/
 	//Sunny.SetMustTcpRegexp("124.221.161.122", true)
-	//Sunny.SetGlobalProxy("socket://127.0.0.1:2022", 60000)
+	//Sunny.SetGlobalProxy("socket://127.0.0.1:2026", 60000)
+	//Sunny.SetOutRouterIP("192.168.31.154")
+	Sunny.SetMustTcpRegexp("shopr-cnlive.mcoc-cdn.cn", false)
+	//Sunny.MustTcp(true)
 	//设置回调地址
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
-	Port := 2025
+	Port := 2026
 	Sunny.SetPort(Port).Start()
 	err := Sunny.Error
 	if err != nil {
@@ -86,7 +89,7 @@ func HttpCallback(Conn SunnyNet.ConnHTTP) {
 	switch Conn.Type() {
 	case public.HttpSendRequest: //发起请求
 		fmt.Println("发起请求", Conn.Proto())
-		Conn.SetResponseBody([]byte("123456"))
+		//Conn.SetResponseBody([]byte("123456"))
 		//直接响应,不让其发送请求
 		//Conn.StopRequest(200, "Hello Word")
 		return

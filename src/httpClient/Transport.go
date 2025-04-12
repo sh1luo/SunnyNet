@@ -3,7 +3,6 @@ package httpClient
 import (
 	"context"
 	"fmt"
-	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
 	"github.com/qtgolang/SunnyNet/src/crypto/tls"
 	"github.com/qtgolang/SunnyNet/src/http"
 	"github.com/qtgolang/SunnyNet/src/http/http2"
@@ -15,7 +14,6 @@ import (
 type Transport struct {
 	cachedTransports http.RoundTripper
 	config           *tls.Config
-	Proxy            *SunnyProxy.Proxy
 	Profile          ClientProfile
 	conn             net.Conn
 	fidCount         int
@@ -137,9 +135,6 @@ func (rt *Transport) dialTLS(ctx context.Context, network, addr string) (net.Con
 }
 
 func (rt *Transport) dial(ctx context.Context, network, addr string) (net.Conn, error) {
-	if rt.Proxy != nil {
-		return rt.Proxy.Dial(network, addr)
-	}
 	var d net.Dialer
 	d.Timeout = rt.Timeout
 	if d.Timeout < 1 {

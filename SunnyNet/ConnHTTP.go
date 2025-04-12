@@ -32,6 +32,18 @@ type httpConn struct {
 	_tls                  *tls.Config
 	_serverIP             string
 	_isRandomCipherSuites bool
+	_localAddress         string
+	_OutRouterIPFunc      func(string) bool
+}
+
+func (k *httpConn) SetOutRouterIP(way string) bool {
+	if k._OutRouterIPFunc != nil {
+		return k._OutRouterIPFunc(way)
+	}
+	return false
+}
+func (h *httpConn) LocalAddress() string {
+	return h._localAddress
 }
 
 func (h *httpConn) GetSocket5User() string {

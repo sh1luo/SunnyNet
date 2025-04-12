@@ -16,6 +16,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"github.com/qtgolang/SunnyNet/src/ReadWriteObject"
+	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
 	"github.com/qtgolang/SunnyNet/src/http"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
@@ -540,3 +541,35 @@ func HTTPBanRedirect(*http.Request, []*http.Request) error {
 func HTTPAllowRedirect(*http.Request, []*http.Request) error {
 	return nil
 }
+func IsLocalIP(ipStr string) (bool, net.IP) {
+	if ipStr == "" {
+		return false, nil
+	}
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false, ip
+	}
+
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return false, ip
+	}
+
+	for _, iface := range interfaces {
+		addrs, err1 := iface.Addrs()
+		if err1 != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok {
+				if ipnet.Contains(ip) {
+					return true, ip
+				}
+			}
+		}
+	}
+
+	return false, nil
+}
+
+var RouterIPInspect = SunnyProxy.RouterIPInspect

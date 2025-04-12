@@ -105,14 +105,14 @@ func ClientRequestIsHttps(Sunny *Sunny, server string, bytesData []byte) (res by
 	if ip == nil {
 		first = dns.GetFirstIP(proxyHost, "")
 		if first != nil {
-			conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(first, proxyPort), time.Second*3)
+			conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(first, proxyPort), time.Second*3, Sunny.outRouterIP)
 		}
 		if conn == nil {
-			ips, _ = dns.LookupIP(proxyHost, "", nil)
+			ips, _ = dns.LookupIP(proxyHost, "", Sunny.outRouterIP, nil)
 			//优先尝试IPV4
 			for _, _ip := range ips {
 				if _ip2 := _ip.To4(); _ip2 != nil {
-					conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(_ip, proxyPort), 2*time.Second)
+					conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(_ip, proxyPort), 2*time.Second, Sunny.outRouterIP)
 					if conn != nil {
 						dns.SetFirstIP(proxyHost, "", _ip)
 						break
@@ -123,7 +123,7 @@ func ClientRequestIsHttps(Sunny *Sunny, server string, bytesData []byte) (res by
 			if conn == nil {
 				for _, _ip := range ips {
 					if _ip2 := _ip.To16(); _ip2 != nil {
-						conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(_ip, proxyPort), 2*time.Second)
+						conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(_ip, proxyPort), 2*time.Second, Sunny.outRouterIP)
 						if conn != nil {
 							dns.SetFirstIP(proxyHost, "", _ip)
 							break
@@ -133,7 +133,7 @@ func ClientRequestIsHttps(Sunny *Sunny, server string, bytesData []byte) (res by
 			}
 		}
 	} else {
-		conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), time.Second*3)
+		conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), time.Second*3, Sunny.outRouterIP)
 	}
 	if conn == nil {
 		return whoisUndefined
@@ -266,7 +266,7 @@ func createNetCert(Sunny *Sunny, host string, parent *x509.Certificate, priv *rs
 	if ip := net.ParseIP(mHost); ip != nil {
 		var rr *x509.Certificate
 		for i := 0; i < 5; i++ {
-			rr, err = GetIpAddressHost(Sunny.proxy, host)
+			rr, err = GetIpAddressHost(Sunny.proxy, host, Sunny.outRouterIP)
 			if rr != nil {
 				break
 			}
@@ -332,7 +332,7 @@ func getTlsConfig(host string) *tls.Certificate {
 	}
 	return nil
 }
-func GetIpAddressHost(proxy *SunnyProxy.Proxy, ipAddress string) (*x509.Certificate, error) {
+func GetIpAddressHost(proxy *SunnyProxy.Proxy, ipAddress string, outRouterIP *net.TCPAddr) (*x509.Certificate, error) {
 	config := &tls.Config{InsecureSkipVerify: true}
 	var x *x509.Certificate
 	config.VerifyServerCertificate = func(certificate *x509.Certificate) error {
@@ -346,7 +346,7 @@ func GetIpAddressHost(proxy *SunnyProxy.Proxy, ipAddress string) (*x509.Certific
 			_ = conn.Close()
 		}
 	}()
-	conn, err = proxy.Dial("tcp", ipAddress)
+	conn, err = proxy.Dial("tcp", ipAddress, outRouterIP)
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +487,7 @@ func init() {
 			rootCa = obj.rootCa
 			rootKey = obj.rootKey
 			tempNetLock.Unlock()
-			rr, err = GetIpAddressHost(obj.proxy, host)
+			rr, err = GetIpAddressHost(obj.proxy, host, obj.outRouterIP)
 			if rr == nil {
 				goto gg
 			}

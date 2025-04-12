@@ -9,17 +9,22 @@ import (
 
 type ConnWebSocket Interface.ConnWebSocketCall
 type wsConn struct {
-	c            *public.WebsocketMsg
-	SunnyContext int
-	_MessageId   int           //仅标识消息ID,不能用于API函数
-	Pid          int           //Pid
-	_Type        int           //消息类型 	public.Websocket...
-	Url          string        //连接请求地址
-	_Method      string        //连接时的Method
-	_Theology    int           //请求唯一ID
-	_ClientIP    string        //来源IP地址,请求从哪里来
-	Request      *http.Request //请求体
-	_Display     bool
+	c             *public.WebsocketMsg
+	SunnyContext  int
+	_MessageId    int           //仅标识消息ID,不能用于API函数
+	Pid           int           //Pid
+	_Type         int           //消息类型 	public.Websocket...
+	Url           string        //连接请求地址
+	_Method       string        //连接时的Method
+	_Theology     int           //请求唯一ID
+	_ClientIP     string        //来源IP地址,请求从哪里来
+	Request       *http.Request //请求体
+	_Display      bool
+	_localAddress string
+}
+
+func (k *wsConn) LocalAddress() string {
+	return k._localAddress
 }
 
 func (k *wsConn) SetDisplay(Display bool) {

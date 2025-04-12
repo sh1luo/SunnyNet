@@ -106,7 +106,7 @@ func SocketClientSetBufferSize(Context, BufferSize int) bool {
 // SocketClientDial
 //
 //	TCP客户端 连接
-func SocketClientDial(Context int, addr string, call int, goCall func(Context, types int, bs []byte), isTls, synchronous bool, ProxyUrl string, CertificateConText int, OutTime int) bool {
+func SocketClientDial(Context int, addr string, call int, goCall func(Context, types int, bs []byte), isTls, synchronous bool, ProxyUrl string, CertificateConText int, OutTime int, OutRouterIP string) bool {
 	w := LoadSocketContext(Context)
 	if w == nil {
 		return false
@@ -129,19 +129,25 @@ func SocketClientDial(Context int, addr string, call int, goCall func(Context, t
 	if OutTime < 1 {
 		out = 15000
 	}
-	if ProxyUrl != "" {
-		c, _ := SunnyProxy.ParseProxy(ProxyUrl, out)
-		if c == nil {
-			return false
+	var outRouterIP *net.TCPAddr
+	_, ip := public.IsLocalIP(OutRouterIP)
+	if ip != nil {
+		if ip.To4() != nil {
+			localAddr, err := net.ResolveTCPAddr("tcp", OutRouterIP+":0")
+			if err == nil {
+				outRouterIP = localAddr
+			}
+		} else {
+			localAddr, err := net.ResolveTCPAddr("tcp", "["+OutRouterIP+"]:0")
+			if err == nil {
+				outRouterIP = localAddr
+			}
 		}
-		a, b := c.Dial("tcp", addr)
-		w.wb = a
-		w.err = b
-	} else {
-		a, b := net.DialTimeout("tcp", uAddr.String(), time.Millisecond*time.Duration(out))
-		w.wb = a
-		w.err = b
 	}
+	c, _ := SunnyProxy.ParseProxy(ProxyUrl, out)
+	a, b := c.DialWithTimeout("tcp", addr, time.Duration(out)*time.Millisecond, outRouterIP)
+	w.wb = a
+	w.err = b
 	if w.err != nil {
 		return false
 	}

@@ -88,6 +88,7 @@ type ConnUDPCall interface {
 type ConnTCPCall interface {
 	general
 	proxy
+	router
 	address
 	/*
 		Body
@@ -264,6 +265,7 @@ type ConnHTTPCall interface {
 
 type connHTTP interface {
 	general
+	router
 	proxy
 	/*
 		Type
@@ -280,7 +282,6 @@ type connHTTP interface {
 		返回请求的客户端IP地址
 	*/
 	ClientIP() string
-
 	/*
 		RandomCipherSuites
 		在发起请求时,随机使用密码套件
@@ -423,11 +424,7 @@ type proxy interface {
 	SetAgent(ProxyUrl string, timeout ...int) bool
 }
 type address interface {
-	/*
-		LocalAddress
-		获取客户端地址
-	*/
-	LocalAddress() string
+
 	/*
 		RemoteAddress
 		获取远程地址
@@ -495,4 +492,19 @@ type general interface {
 		如果通过驱动传入的请求也无法获取到
 	*/
 	GetSocket5User() string
+
+	/*
+		LocalAddress
+		获取本地地址
+	*/
+	LocalAddress() string
+}
+type router interface {
+	/*
+		SetOutRouterIP
+		设置数据出口IP
+		请传入网卡对应的IP地址,用于指定网卡
+		设置空字符串 表示使用默认出口IP
+	*/
+	SetOutRouterIP(way string) bool
 }
