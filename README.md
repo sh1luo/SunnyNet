@@ -1,4 +1,16 @@
-# Sunny网络中间件
+
+<div style="text-align: center;"><h3><a style="color: red;">请注意 若你使用 git 克隆此仓库,请使用以下命令,否则会下载所有提交记录</a></div></h3></center>
+
+```
+ // 1. 此命令只会下载最后一次提交记录 (按需使用)
+ git clone --depth=1 https://github.com/qtgolang/SunnyNet.git
+ 
+ // 2. 此命令会下载所有提交记录,大小约 1.1GB - 1.3GB (按需使用)
+ git clone https://github.com/qtgolang/SunnyNet.git
+ 
+ ```
+
+#  <center><h3>Sunny网络中间件</center></h3></center>
 
 ---
 
@@ -12,7 +24,7 @@
  
  支持 对 HTTP/HTTPS/WS/WSS/TCP/TLS-TCP 链接重定向
  
- 支持 gzip, deflate, br, ZSTD 解码
+ 支持 gzip, deflate, br, zstd 解码
  
  支持 WS/WSS/TCP/TLS-TCP/UDP 主动发送数据 
  
@@ -23,10 +35,10 @@
 * # 如需支持Win7系统
 * # 请使用Go1.21以下版本编译,例如 go 1.20.4版本 
 * # <a href="https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe">编译请使用 TDM-GCC</a>
-<center><h2><a style="color: red;">BUG 反馈</a></center></h2></center>
-<center><h3>QQ群:751406884</center></h3></center>
-<center><h3>二群：545120699</center></h3></center>
-<center><h3>网址：<a href="https://esunny.vip/">https://esunny.vip/</a></center></h3></center>
+<div style="text-align: center;"><h2><a style="color: red;">BUG 反馈</a></h2></div>
+<div style="text-align: center;"><h3>QQ群:751406884</h3></div>
+<div style="text-align: center;"><h3>二群：545120699</h3></div>
+<div style="text-align: center;"><h3>网址：<a href="https://esunny.vip/">https://esunny.vip/</a></h3></div>
 
 ---
 
