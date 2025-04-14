@@ -620,8 +620,9 @@ type Config struct {
 	// SetSessionTicketKeys was called on the returned Config, those keys will
 	// be used. Otherwise, the original Config keys will be used (and possibly
 	// rotated if they are automatically managed).
-	GetConfigForClient func(*ClientHelloInfo) (*Config, error)
-	GetConfigForServer func(*ServerHelloMsg) error
+	GetConfigForClient    func(*ClientHelloInfo) (*Config, error)
+	GetConfigForServer    func(*ServerHelloMsg) error
+	ServerHookClientHello func([]byte)
 
 	// VerifyPeerCertificate, if not nil, is called after normal
 	// certificate verification by either a TLS client or server. It

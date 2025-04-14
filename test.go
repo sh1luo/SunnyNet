@@ -71,12 +71,13 @@ func Test() {
 	//Sunny.SetMustTcpRegexp("124.221.161.122", true)
 	//Sunny.SetGlobalProxy("socket://127.0.0.1:2026", 60000)
 	//Sunny.SetOutRouterIP("192.168.31.154")
-	Sunny.SetMustTcpRegexp("shopr-cnlive.mcoc-cdn.cn", false)
+	//Sunny.SetMustTcpRegexp("shopr-cnlive.mcoc-cdn.cn", false)
 	//Sunny.MustTcp(true)
 	//设置回调地址
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
-	Port := 2026
+	Port := 2025
 	Sunny.SetPort(Port).Start()
+	//fmt.Println(Sunny.SetIEProxy())
 	err := Sunny.Error
 	if err != nil {
 		panic(err)

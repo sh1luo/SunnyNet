@@ -3,7 +3,6 @@ package basetype
 
 import (
 	"encoding/binary"
-	"fmt"
 	"unsafe"
 )
 
@@ -16,18 +15,6 @@ func init() {
 	} else {
 		hostByteOrder = binary.BigEndian
 	}
-}
-
-func printAsBinary(bytes []byte) {
-
-	for i := 0; i < len(bytes); i++ {
-		for j := 0; j < 8; j++ {
-			zeroOrOne := bytes[i] >> (7 - j) & 1
-			fmt.Printf("%c", '0'+zeroOrOne)
-		}
-		fmt.Printf(" %p\n", &bytes[i])
-	}
-	fmt.Println()
 }
 
 type INT16 [2]byte

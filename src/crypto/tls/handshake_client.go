@@ -253,11 +253,13 @@ func (c *Conn) clientHandshake(ctx context.Context) (err error) {
 		return unexpectedMessageError(serverHello, msg)
 	}
 	if c.config.GetConfigForServer != nil {
-		err = c.config.GetConfigForServer(serverHello.toServerHelloMsg())
+		a := serverHello.toServerHelloMsg()
+		err = c.config.GetConfigForServer(a)
 		if err != nil {
 			_ = c.conn.Close()
 			return err
 		}
+		serverHello.sessionId = a.SessionId
 	}
 	if err := c.pickTLSVersion(serverHello); err != nil {
 		return err

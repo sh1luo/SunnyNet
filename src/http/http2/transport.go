@@ -2338,7 +2338,6 @@ func (rl *clientConnReadLoop) handleResponse(cs *clientStream, f *MetaHeadersFra
 	// requestedGzip will be set to false
 	if !cs.cc.t.DisableCompression {
 		//res.Body = http.DecompressBody(res)
-		fmt.Println("11111111111111111122222222222222222222222")
 	}
 
 	return res, nil

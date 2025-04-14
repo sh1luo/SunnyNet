@@ -788,9 +788,9 @@ func (s *proxyRequest) transparentProcessing() {
 		var certificate *tls.Certificate
 		var er error
 		if s.isLoop() {
-			certificate, _, er = WhoisLoopCache(s.Global, s.Target.String(), s.Global.rootCa, s.Global.rootKey)
+			certificate, _, er = WhoisLoopCache(s.Global, nil, s.Target.String(), s.Global.rootCa, s.Global.rootKey)
 		} else {
-			certificate, _, er = WhoisCache(s.Global, "null", s.Target.String(), s.Global.rootCa, s.Global.rootKey)
+			certificate, _, er = WhoisCache(s.Global, nil, "null", s.Target.String(), s.Global.rootCa, s.Global.rootKey)
 		}
 		//进行生成证书，用于服务器返回握手信息
 		if er != nil {
@@ -1075,12 +1075,11 @@ func (s *proxyRequest) https() {
 		//得到握手信息后 恢复30秒的读写超时
 		_ = tlsConn.SetDeadline(time.Now().Add(30 * time.Second))
 		if err == nil {
-			res := ClientIsHttps(s.Target.String())
+			res, cert := ClientIsHttps(s.Target.String())
 			if res == whoisUndefined {
-				res = ClientRequestIsHttps(s.Global, s.Target.String(), hook.Bytes())
+				res, cert = ClientRequestIsHttps(s.Global, s.Target.String(), serverName)
 			}
-			if res == whoisNoHTTPS {
-				_, _ = s.RwObj.WriteString(public.NoHTTPSVerb)
+			if res == whoisNoHTTPS || res == whoisUndefined {
 				_ = s.RwObj.Close()
 				return
 			}
@@ -1096,9 +1095,9 @@ func (s *proxyRequest) https() {
 			var certificate *tls.Certificate
 			var DNSNames []string
 			if s.isLoop() {
-				certificate, DNSNames, _ = WhoisLoopCache(s.Global, host, s.Global.rootCa, s.Global.rootKey)
+				certificate, DNSNames, _ = WhoisLoopCache(s.Global, cert, host, s.Global.rootCa, s.Global.rootKey)
 			} else {
-				certificate, DNSNames, _ = WhoisCache(s.Global, name, host, s.Global.rootCa, s.Global.rootKey)
+				certificate, DNSNames, _ = WhoisCache(s.Global, cert, name, host, s.Global.rootCa, s.Global.rootKey)
 			}
 			isRules := s.Global.tcpRules(serverName, s.Target.Host, DNSNames...)
 			if isRules {
@@ -1381,11 +1380,6 @@ func (s *proxyRequest) handleWss() bool {
 				as.Mt = mt
 				s.CallbackWssRequest(public.WebsocketServerSend, Method, Url, as, MessageId)
 				sc.Lock()
-				if as.Data.Len() > 32 {
-					fmt.Println("收到服务器消息:发送到客户端", string(as.Data.Bytes()[0:32]))
-				} else {
-					fmt.Println("收到服务器消息:发送到客户端", string(as.Data.Bytes()))
-				}
 				//发到客户端
 				err = Client.WriteMessage(as.Mt, as.Data.Bytes())
 				sc.Unlock()
@@ -1522,12 +1516,6 @@ func (s *proxyRequest) handleWss() bool {
 			}
 			s.CallbackWssRequest(public.WebsocketUserSend, Method, Url, as, MessageId)
 			sc.Lock()
-
-			if as.Data.Len() > 32 {
-				fmt.Println("收到客户端消息:发送到服务器", string(as.Data.Bytes()[0:32]))
-			} else {
-				fmt.Println("收到客户端消息:发送到服务器", string(as.Data.Bytes()))
-			}
 			if as.Mt != websocket.BinaryMessage {
 				//发到服务器
 				err = Server.WriteMessage(as.Mt, as.Data.Bytes())

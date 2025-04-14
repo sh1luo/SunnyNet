@@ -50,6 +50,7 @@ type httpTypeInfo struct {
 	_type byte
 	_time time.Time
 	_lock sync.Mutex
+	_cert *x509.Certificate
 }
 
 func clean() {
@@ -67,38 +68,53 @@ func clean() {
 func init() {
 	go clean()
 }
-func ClientIsHttps(server string) byte {
+func ClientIsHttps(server string) (byte, *x509.Certificate) {
 	whoisLock.Lock()
 	defer whoisLock.Unlock()
 	res := httpTypeMap[server]
 	if res == nil {
-		return whoisUndefined
+		return whoisUndefined, nil
 	}
 	res._time = time.Now()
-	return res._type
+	return res._type, res._cert
 }
-func ClientRequestIsHttps(Sunny *Sunny, server string, bytesData []byte) (res byte) {
+
+/*
+ClientRequestIsHttps
+探测目标服务器是否支持HTTPS，是否支持HTTP2（因为谷歌浏览器或Edge浏览器,在访问http请求时可能会先发送一个https请求判断服务器是否支持https）
+并且
+同时获取服务器提供的证书（主要用于提取证书中的部分信息,用于生成SunnyNet证书）
+*/
+func ClientRequestIsHttps(Sunny *Sunny, targetAddr string, serverName string) (res byte, cert *x509.Certificate) {
 	var obj *httpTypeInfo
 	whoisLock.Lock()
-	if httpTypeMap[server] == nil {
+	if httpTypeMap[targetAddr] == nil {
 		obj = &httpTypeInfo{_time: time.Now()}
+		httpTypeMap[targetAddr] = obj
 	} else {
-		obj = httpTypeMap[server]
+		obj = httpTypeMap[targetAddr]
 	}
 	whoisLock.Unlock()
 	obj._lock.Lock()
-	defer func() {
-		whoisLock.Lock()
-		obj._type = res
-		obj._time = time.Now()
-		whoisLock.Unlock()
+	if obj._type != whoisUndefined {
 		obj._lock.Unlock()
+		return obj._type, obj._cert
+	}
+	defer func() {
+		if res != whoisUndefined {
+			whoisLock.Lock()
+			obj._type = res
+			obj._cert = cert
+			obj._time = time.Now()
+			whoisLock.Unlock()
+			obj._lock.Unlock()
+		}
 	}()
-	proxyHost, proxyPort, e := net.SplitHostPort(server)
+	proxyHost, proxyPort, e := net.SplitHostPort(targetAddr)
 	var ips []net.IP
 	var first net.IP
 	if e != nil {
-		return whoisUndefined
+		return whoisUndefined, nil
 	}
 	var conn net.Conn
 	ip := net.ParseIP(proxyHost)
@@ -136,54 +152,64 @@ func ClientRequestIsHttps(Sunny *Sunny, server string, bytesData []byte) (res by
 		conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), time.Second*3, Sunny.outRouterIP)
 	}
 	if conn == nil {
-		return whoisUndefined
+		return whoisUndefined, nil
 	}
 	defer func() {
 		_ = conn.Close()
 	}()
-	_ = conn.SetDeadline(time.Now().Add(time.Second * 3))
-	_, _ = conn.Write(bytesData)
-	hdr := make([]byte, 5)
-	n, _ := conn.Read(hdr)
-	if hdr[0] == 0 {
-		return whoisUndefined
-	}
-	if n < 5 {
-		return whoisNoHTTPS
-	}
-	var bs bytes.Buffer
-	if hdr[0] == 21 || hdr[0] == 22 || hdr[0] == 23 {
-		n = int(hdr[3])<<8 | int(hdr[4])
-		if n < 40960 {
-			data := make([]byte, 128)
-			for {
-				if bs.Len() >= n {
-					break
-				}
-				nx, err := conn.Read(data)
-				bs.Write(data[:nx])
-				if err != nil {
-					break
-				}
-			}
-			if bs.Len() >= n {
-				data = bs.Bytes()[:n]
-				mmm := tls.UnMarshal(data)
-				bs.Reset()
-				if mmm != nil {
-					if mmm.SupportedVersion == 772 {
-						return whoisHTTPS2
-					}
-				}
-			}
-			return whoisHTTPS1
-		}
-	}
 
-	return whoisNoHTTPS
+	if Sunny.proxy != nil {
+		if Sunny.proxy.Host != "" {
+			_ = conn.SetDeadline(time.Now().Add(time.Second * 3))
+		}
+	} else {
+		_ = conn.SetDeadline(time.Now().Add(time.Second * 1))
+	}
+	var hello *tls.ServerHelloMsg
+	var certificate *x509.Certificate
+	config := &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         serverName,
+	}
+	config.GetConfigForServer = func(msg *tls.ServerHelloMsg) error {
+		hello = msg
+		return nil
+	}
+	config.VerifyServerCertificate = func(_certificate *x509.Certificate) error {
+		certificate = _certificate
+		return io.EOF
+	}
+	c := tls.Client(conn, config)
+	err := c.Handshake()
+	if hello == nil {
+		if err != nil {
+			if strings.Contains(err.Error(), "close") {
+				return whoisNoHTTPS, nil
+			}
+		}
+		return whoisUndefined, nil
+	}
+	isVer := whoisHTTPS1
+	if hello.SupportedVersion == 772 {
+		isVer = whoisHTTPS2
+	}
+	return byte(isVer), certificate
 }
 
-func WhoisCache(Sunny *Sunny, serverName, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, error) {
+type virtualConn struct {
+	net.Conn
+	buff bytes.Buffer
+}
+
+func (v *virtualConn) Read(b []byte) (n int, err error) {
+	a, e := v.Conn.Read(b)
+	return a, e
+}
+func (v *virtualConn) Write(b []byte) (n int, err error) {
+	v.buff.Write(b)
+	return 0, nil
+}
+func WhoisCache(Sunny *Sunny, cert *x509.Certificate, serverName, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, error) {
 	{
 		if in := getTlsConfig(host); in != nil {
 			return in, nil, nil
@@ -203,32 +229,32 @@ func WhoisCache(Sunny *Sunny, serverName, host string, parent *x509.Certificate,
 		}
 	}
 	{
-		c, d := createLocalCert(Sunny, serverName, host, parent, priv)
+		c, d := createLocalCert(Sunny, cert, serverName, host, parent, priv)
 		if c != nil {
 			return c, d, nil
 		}
 	}
 	return nil, nil, _GetIpCertError
 }
-func WhoisLoopCache(Sunny *Sunny, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, error) {
+func WhoisLoopCache(Sunny *Sunny, cert *x509.Certificate, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, error) {
 	c, d := getLocalCert(host)
 	if c != nil {
 		return c, d, nil
 	}
-	c, d = createLocalCert(Sunny, host, host, parent, priv)
+	c, d = createLocalCert(Sunny, cert, host, host, parent, priv)
 	if c != nil {
 		return c, d, nil
 	}
 	return nil, nil, _GetIpCertError
 }
-func createLocalCert(Sunny *Sunny, serverName, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string) {
+func createLocalCert(Sunny *Sunny, cert *x509.Certificate, serverName, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string) {
 	var mHost string
 	var keyName string
 	var err error
 	if serverName == "" || serverName == "null" {
 		//是否为DNS解析服务器,如果是直接本地生成证书即可,就不需要从网络获取证书了
 		if !strings.HasSuffix(host, ":853") {
-			a, b, _ := createNetCert(Sunny, host, parent, priv)
+			a, b, _ := createNetCert(Sunny, cert, host, parent, priv)
 			if a != nil {
 				return a, b
 			}
@@ -258,17 +284,22 @@ func createLocalCert(Sunny *Sunny, serverName, host string, parent *x509.Certifi
 	whoisLock.Unlock()
 	return &certificate, nil
 }
-func createNetCert(Sunny *Sunny, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, error) {
+func createNetCert(Sunny *Sunny, cert *x509.Certificate, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, error) {
 	mHost, _, err := public.SplitHostPort(host)
 	if err != nil {
 		return nil, nil, err
 	}
 	if ip := net.ParseIP(mHost); ip != nil {
 		var rr *x509.Certificate
-		for i := 0; i < 5; i++ {
-			rr, err = GetIpAddressHost(Sunny.proxy, host, Sunny.outRouterIP)
-			if rr != nil {
-				break
+		if cert != nil {
+			rr = cert
+		}
+		if rr == nil {
+			for i := 0; i < 5; i++ {
+				rr, err = GetIpAddressHost(Sunny.proxy, host, Sunny.outRouterIP)
+				if rr != nil {
+					break
+				}
 			}
 		}
 		if rr == nil {
@@ -442,17 +473,6 @@ func generatePemTemp(mHost string, parent *x509.Certificate, priv *rsa.PrivateKe
 
 var tempNet map[*Sunny]map[string]byte
 var tempNetLock sync.Mutex
-
-func TempNetAdd(Sunny *Sunny, host string) {
-	tempNetLock.Lock()
-	if tempNet[Sunny] == nil {
-		tempNet[Sunny] = make(map[string]byte)
-	}
-	if tempNet[Sunny][host] < 1 {
-		tempNet[Sunny][host] = 1
-	}
-	tempNetLock.Unlock()
-}
 
 func init() {
 	tempNet = make(map[*Sunny]map[string]byte)

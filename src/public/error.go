@@ -1,7 +1,6 @@
 package public
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 )
@@ -47,7 +46,3 @@ func errReplaceAll(s string) string {
 	}
 	return m
 }
-
-const noHTTPSVerbContent = "<HTML><HEAD><TITLE>Bad Request</TITLE>\r\n<META HTTP-EQUIV=\"Content-Type\" Content=\"text/html\"></HEAD>\r\n<BODY><h2>Bad Request - Invalid Verb</h2>\r\n<hr><p>HTTP Error 400. The request verb is invalid.</p>\r\n</BODY></HTML>\r\n"
-
-var NoHTTPSVerb = fmt.Sprintf("HTTP/1.1 400 Bad Request\r\nContent-Type: text/html;\r\nConnection: close\r\nContent-Length: %d\r\n\r\n%s", len(noHTTPSVerbContent), noHTTPSVerbContent)

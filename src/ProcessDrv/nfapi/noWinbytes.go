@@ -40,7 +40,6 @@ func printAsBinary(bytes []byte) {
 		}
 		fmt.Printf(" %p\n", &bytes[i])
 	}
-	fmt.Println()
 }
 
 type INT16 = basetype.INT16
@@ -107,7 +106,7 @@ func (p *ProcessInfo) ID() uint64 {
 	return p.Id
 }
 func (p *ProcessInfo) Close() {
- 
+
 }
 
 /**
