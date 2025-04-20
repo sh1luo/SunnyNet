@@ -879,7 +879,7 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 			}
 			s.NoRepairHttp = true
 			s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, buff.Bytes()))
-			s.MustTcpProcessing(public.TagMustTCP)
+			s.MustTcpProcessing(Tag)
 			return
 		}
 		if Tag == public.TagTcpSSLAgreement {
