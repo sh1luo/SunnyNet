@@ -622,7 +622,6 @@ func (s *proxyRequest) MustTcpProcessing(Tag string) {
 	if s.Target == nil {
 		return
 	}
-
 	if s.isLoop() {
 		return
 	}
@@ -834,26 +833,41 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 		buff.Write(aheadData)
 		var isRules bool
 		var host string
+		var lineNumber int
 		for {
+			lineNumber++
 			//找到HOST 进行匹配是否强制走 TCP
 			bs, e := s.RwObj.ReadSlice('\n')
+			ms := string(bs)
 			buff.Write(bs)
+			if lineNumber == 1 {
+				isRules = !strings.Contains(strings.ToLower(buff.String()), "http/")
+				if isRules {
+					_ = s.RwObj.SetReadDeadline(time.Now().Add(time.Millisecond * 100))
+					Method = public.HttpMethodGET //防止 不是标准的 CONNECT 请求 ,防止在循环退出后出错
+				}
+			}
 			if e != nil || len(bs) < 3 {
 				break
 			}
-			ms := string(bs)
 			arr := strings.SplitN(ms, ":", 2)
 			if len(arr) > 1 && strings.ToLower(strings.TrimSpace(arr[0])) == "host" {
 				host = strings.TrimSpace(arr[1])
-				isRules = s.Global.tcpRules(host, s.Target.Host)
+				if !isRules {
+					isRules = s.Global.tcpRules(host, s.Target.Host)
+				}
 				break
 			}
 		}
 		if isRules && Method != public.HttpMethodCONNECT {
+			_ = s.RwObj.SetReadDeadline(time.Time{})
 			if s.Global.disableTCP {
 				return
 			}
 			if s.Target.Host == "" {
+				if host == "" {
+					return
+				}
 				s.Target.Parse(host, 0)
 			}
 			if s.Target.Port == 0 {
@@ -1723,6 +1737,10 @@ func (s *proxyRequest) CompleteRequest(req *http.Request) {
 		if s.Response.Response == nil && err == nil {
 			err = errors.New("No data obtained. ")
 		}
+		fmt.Println("doRequest", err)
+		fmt.Println("1->", len(bakBytes))
+		fmt.Println("1->", s.Request.ContentLength)
+		fmt.Println("2->", s.Request.Header.Get("Content-Length"))
 		s.Error(err, true)
 		return
 	}

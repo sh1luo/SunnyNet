@@ -164,11 +164,6 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 	r.Response.rw = rw
-	if Length < 4096 {
-		res.ContentLength = Length
-	} else {
-		res.ContentLength = -1
-	}
 	if res.ProtoMajor == 2 {
 		reHeader := make(http.Header)
 		for k, v := range res.Header {

@@ -210,10 +210,6 @@ func (c *CertManager) AddCertPoolPath(path string) bool {
 	if c.Tls == nil {
 		return false
 	}
-	if c.Tls == nil {
-		return false
-	}
-
 	aCrt, err := ioutil.ReadFile(path)
 	if err != nil {
 		return false
@@ -222,9 +218,9 @@ func (c *CertManager) AddCertPoolPath(path string) bool {
 		c.Tls.ClientCAs = x509.NewCertPool()
 	}
 	if !c.Tls.ClientCAs.AppendCertsFromPEM(aCrt) {
-		cert, err := x509.ParseCertificate(aCrt)
-		if err != nil {
-			panic(err)
+		cert, err1 := x509.ParseCertificate(aCrt)
+		if err1 != nil {
+			return false
 		}
 		// 将证书转换为 PEM 格式
 		pemBytes := pem.EncodeToMemory(&pem.Block{
@@ -251,7 +247,7 @@ func (c *CertManager) AddCertPoolText(cer string) bool {
 	if !c.Tls.ClientCAs.AppendCertsFromPEM([]byte((cer))) {
 		cert, err := x509.ParseCertificate([]byte((cer)))
 		if err != nil {
-			panic(err)
+			return false
 		}
 		// 将证书转换为 PEM 格式
 		pemBytes := pem.EncodeToMemory(&pem.Block{

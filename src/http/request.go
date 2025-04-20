@@ -374,7 +374,12 @@ func (r *Request) GetData() []byte {
 	if r.Body != nil {
 		buf, _ := io.ReadAll(r.Body)
 		_ = r.Body.Close()
-		r.ContentLength = int64(len(buf))
+		if len(buf) > 0 {
+			r.ContentLength = -1
+		} else {
+			r.ContentLength = 0
+		}
+
 		r.Body = io.NopCloser(bytes.NewBuffer(buf))
 		return buf
 	}

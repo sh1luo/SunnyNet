@@ -50,7 +50,7 @@ func IsLoopRequest(Port string, SunnyPort int) bool {
 	connections, _ := net.ConnectionsPid("tcp", myPid)
 	for _, conn := range connections {
 		if conn.Raddr.Port == _SunnyPort {
-			if conn.Laddr.Port == _ConnPort || conn.Laddr.Port == _ConnPort-1 || conn.Laddr.Port == _ConnPort-2 {
+			if conn.Laddr.Port == _ConnPort {
 				return true
 			}
 		}
